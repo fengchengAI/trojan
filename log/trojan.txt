@@ -1,0 +1,23 @@
+2020-09-17 13:57:16[WARN] trojan service (client) started at 127.0.0.1:1080
+2020-09-17 13:57:25[INFO] 127.0.0.1:33864 requested connection to accounts.google.com:443
+2020-09-17 13:57:25[INFO] 127.0.0.1:33868 requested connection to www.google.com:443
+2020-09-17 13:57:25[INFO] 127.0.0.1:33872 requested connection to www.googleapis.com:443
+2020-09-17 13:57:25[INFO] 127.0.0.1:33876 requested connection to www.google.com:443
+2020-09-17 13:57:25[INFO] 127.0.0.1:33880 requested connection to raw.githubusercontent.com:443
+2020-09-17 13:57:25[INFO] 127.0.0.1:33876 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-09-17 13:57:26[INFO] 127.0.0.1:33884 requested connection to fonts.gstatic.com:443
+2020-09-17 13:57:26[INFO] 127.0.0.1:33888 requested connection to adservice.google.com:443
+2020-09-17 13:57:26[INFO] 127.0.0.1:33892 requested connection to www.googleapis.com:443
+2020-09-17 13:57:26[INFO] 127.0.0.1:33872 disconnected, 0 bytes received, 517 bytes sent, lasted for 1 seconds
+2020-09-17 13:57:27[INFO] 127.0.0.1:33896 requested connection to clients4.google.com:443
+2020-09-17 13:57:27[INFO] 127.0.0.1:33898 requested connection to oauthaccountmanager.googleapis.com:443
+2020-09-17 13:57:30[INFO] 127.0.0.1:33906 requested connection to ogs.google.com:443
+2020-09-17 13:57:30[INFO] 127.0.0.1:33910 requested connection to clients2.google.com:443
+2020-09-17 13:57:30[INFO] 127.0.0.1:33914 requested connection to mtalk.google.com:5228
+2020-09-17 13:57:30[INFO] 127.0.0.1:33918 requested connection to update.googleapis.com:443
+2020-09-17 13:57:30[INFO] 127.0.0.1:33922 requested connection to www.gstatic.com:443
+2020-09-17 13:57:30[INFO] 127.0.0.1:33924 requested connection to ssl.gstatic.com:443
+2020-09-17 13:57:30[INFO] 127.0.0.1:33926 requested connection to apis.google.com:443
+2020-09-17 13:57:31[INFO] 127.0.0.1:33934 requested connection to play.google.com:443
+2020-09-17 13:57:31[WARN] got signal: 2
+2020-09-17 13:57:31[WARN] trojan service stopped
