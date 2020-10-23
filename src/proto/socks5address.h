@@ -34,7 +34,6 @@ public:
     std::string address;
     uint16_t port;
     bool parse(const std::string &data, size_t &address_len);
-    static std::string generate(const boost::asio::ip::udp::endpoint &endpoint);
 };
 
 #endif // _SOCKS5ADDRESS_H_

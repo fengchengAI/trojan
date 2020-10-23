@@ -19,8 +19,8 @@
 
 #include "clientsession.h"
 #include "proto/trojanrequest.h"
-#include "proto/udppacket.h"
 #include "ssl/sslsession.h"
+#include <iostream>
 using namespace std;
 using namespace boost::asio::ip;
 using namespace boost::asio::ssl;
@@ -28,25 +28,28 @@ using namespace boost::asio::ssl;
 ClientSession::ClientSession(const Config &config, boost::asio::io_context &io_context, context &ssl_context) :
     Session(config, io_context),
     status(HANDSHAKE),
-    first_packet_recv(false),
     in_socket(io_context),
-    out_socket(io_context, ssl_context) {}
+    // in_socket 和本地浏览器之间的连接，实际上在service中的socket_acceptor.async_accept（）中的socket就是这个
+    // 也就是说这个in_socket表示的是浏览器某一个请求和本地监听端口的一个链接
+
+    out_socket(io_context, ssl_context) {}  //out_socket 和远程服务器之间的链接
 
 tcp::socket& ClientSession::accept_socket() {
     return in_socket;
 }
 
-void ClientSession::start() {
+void ClientSession::start(const std::string& str_) {
+    honst = str_;
     boost::system::error_code ec;
     start_time = time(nullptr);
-    in_endpoint = in_socket.remote_endpoint(ec);
+    in_endpoint = in_socket.remote_endpoint(ec);  // 本地浏览器的请求：127.0.0.1:[PORT]
     if (ec) {
         destroy();
         return;
     }
     auto ssl = out_socket.native_handle();
     if (!config.ssl.sni.empty()) {
-        SSL_set_tlsext_host_name(ssl, config.ssl.sni.c_str());
+        SSL_set_tlsext_host_name(ssl, config.ssl.sni.c_str());  // TODO
     }
     if (config.ssl.reuse_session) {
         SSL_SESSION *session = SSLSession::get_session();
@@ -58,8 +61,7 @@ void ClientSession::start() {
 }
 
 void ClientSession::in_async_read() {
-    auto self = shared_from_this();
-    in_socket.async_read_some(boost::asio::buffer(in_read_buf, MAX_LENGTH), [this, self](const boost::system::error_code error, size_t length) {
+    in_socket.async_read_some(boost::asio::buffer(in_read_buf, MAX_LENGTH), [this, self= shared_from_this()](const boost::system::error_code error, size_t length) {
         if (error == boost::asio::error::operation_aborted) {
             return;
         }
@@ -67,14 +69,14 @@ void ClientSession::in_async_read() {
             destroy();
             return;
         }
-        in_recv(string((const char*)in_read_buf, length));
+        in_recv(string(in_read_buf, length));
     });
 }
 
 void ClientSession::in_async_write(const string &data) {
-    auto self = shared_from_this();
-    auto data_copy = make_shared<string>(data);
-    boost::asio::async_write(in_socket, boost::asio::buffer(*data_copy), [this, self, data_copy](const boost::system::error_code error, size_t) {
+    // auto data_copy = make_shared<string>(data);  // 作者在这里将data包装成一个智能指针，为的是怕data在异构中失效，
+    // 但是事实上data传入到这里是不会失效的，这个data会被这个函数调用时立即发送出去。
+    boost::asio::async_write(in_socket, boost::asio::buffer(data), [this, self= shared_from_this()](const boost::system::error_code error, size_t) {
         if (error) {
             destroy();
             return;
@@ -84,20 +86,17 @@ void ClientSession::in_async_write(const string &data) {
 }
 
 void ClientSession::out_async_read() {
-    auto self = shared_from_this();
-    out_socket.async_read_some(boost::asio::buffer(out_read_buf, MAX_LENGTH), [this, self](const boost::system::error_code error, size_t length) {
+    out_socket.async_read_some(boost::asio::buffer(out_read_buf, MAX_LENGTH), [this, self= shared_from_this()](const boost::system::error_code error, size_t length) {
         if (error) {
             destroy();
             return;
         }
-        out_recv(string((const char*)out_read_buf, length));
+        out_recv(string(out_read_buf, length));
     });
 }
 
 void ClientSession::out_async_write(const string &data) {
-    auto self = shared_from_this();
-    auto data_copy = make_shared<string>(data);
-    boost::asio::async_write(out_socket, boost::asio::buffer(*data_copy), [this, self, data_copy](const boost::system::error_code error, size_t) {
+    boost::asio::async_write(out_socket, boost::asio::buffer(data), [this, self= shared_from_this()](const boost::system::error_code error, size_t) {
         if (error) {
             destroy();
             return;
@@ -106,35 +105,12 @@ void ClientSession::out_async_write(const string &data) {
     });
 }
 
-void ClientSession::udp_async_read() {
-    auto self = shared_from_this();
-    udp_socket.async_receive_from(boost::asio::buffer(udp_read_buf, MAX_LENGTH), udp_recv_endpoint, [this, self](const boost::system::error_code error, size_t length) {
-        if (error == boost::asio::error::operation_aborted) {
-            return;
-        }
-        if (error) {
-            destroy();
-            return;
-        }
-        udp_recv(string((const char*)udp_read_buf, length), udp_recv_endpoint);
-    });
-}
-
-void ClientSession::udp_async_write(const string &data, const udp::endpoint &endpoint) {
-    auto self = shared_from_this();
-    auto data_copy = make_shared<string>(data);
-    udp_socket.async_send_to(boost::asio::buffer(*data_copy), endpoint, [this, self, data_copy](const boost::system::error_code error, size_t) {
-        if (error) {
-            destroy();
-            return;
-        }
-        udp_sent();
-    });
-}
-
 void ClientSession::in_recv(const string &data) {
     switch (status) {
+
         case HANDSHAKE: {
+
+            // 这里是ASCII为510,即将data的每个元素转化为int是510
             if (data.length() < 2 || data[0] != 5 || data.length() != (unsigned int)(unsigned char)data[1] + 2) {
                 Log::log_with_endpoint(in_endpoint, "unknown protocol", Log::ERROR);
                 destroy();
@@ -157,6 +133,9 @@ void ClientSession::in_recv(const string &data) {
             break;
         }
         case REQUEST: {
+            // 此时的data包含以域名为请求的一系列数据，如：500www.google.cn���...
+            // � 是不可显示的符号
+
             if (data.length() < 7 || data[0] != 5 || data[2] != 0) {
                 Log::log_with_endpoint(in_endpoint, "bad request", Log::ERROR);
                 destroy();
@@ -170,40 +149,25 @@ void ClientSession::in_recv(const string &data) {
                 status = INVALID;
                 return;
             }
-            is_udp = req.command == TrojanRequest::UDP_ASSOCIATE;
-            if (is_udp) {
-                udp::endpoint bindpoint(in_socket.local_endpoint().address(), 0);
-                boost::system::error_code ec;
-                udp_socket.open(bindpoint.protocol(), ec);
-                if (ec) {
-                    destroy();
-                    return;
-                }
-                udp_socket.bind(bindpoint);
-                Log::log_with_endpoint(in_endpoint, "requested UDP associate to " + req.address.address + ':' + to_string(req.address.port) + ", open UDP socket " + udp_socket.local_endpoint().address().to_string() + ':' + to_string(udp_socket.local_endpoint().port()) + " for relay", Log::INFO);
-                in_async_write(string("\x05\x00\x00", 3) + SOCKS5Address::generate(udp_socket.local_endpoint()));
-            } else {
-                Log::log_with_endpoint(in_endpoint, "requested connection to " + req.address.address + ':' + to_string(req.address.port), Log::INFO);
-                in_async_write(string("\x05\x00\x00\x01\x00\x00\x00\x00\x00\x00", 10));
-            }
+
+             Log::log_with_endpoint(in_endpoint, "requested connection to " + req.address.address + ':' + to_string(req.address.port), Log::INFO);
+             //eg: [2020-09-15 19:20:22] [INFO] 127.0.0.1:58862 requested connection to www.youtube.com:443
+            in_async_write(string("\x05\x00\x00\x01\x00\x00\x00\x00\x00\x00", 10));
+
             break;
         }
         case CONNECT: {
+            // 将读取的信息，添加到包含trojan头信息的out_write_buf中
             sent_len += data.length();
-            first_packet_recv = true;
             out_write_buf += data;
             break;
         }
-        case FORWARD: {
+        case FORWARD: {  //在这里直接写入了data是因为,trojan头在connect状态就有了，这里就
             sent_len += data.length();
             out_async_write(data);
             break;
         }
-        case UDP_FORWARD: {
-            Log::log_with_endpoint(in_endpoint, "unexpected data from TCP port", Log::ERROR);
-            destroy();
-            break;
-        }
+
         default: break;
     }
 }
@@ -212,23 +176,24 @@ void ClientSession::in_sent() {
     switch (status) {
         case HANDSHAKE: {
             status = REQUEST;
+
             in_async_read();
             break;
         }
         case REQUEST: {
             status = CONNECT;
-            in_async_read();
-            if (is_udp) {
-                udp_async_read();
-            }
-            auto self = shared_from_this();
-            resolver.async_resolve(config.remote_addr, to_string(config.remote_port), [this, self](const boost::system::error_code error, const tcp::resolver::results_type& results) {
+
+            in_async_read();  // 这次读入的是有trojan头信息的数据
+
+            // 这里解析的是vps上的地址
+            resolver.async_resolve(honst, to_string(config.remote_port), [this, self = shared_from_this()](const boost::system::error_code error, const tcp::resolver::results_type& results) {
                 if (error || results.empty()) {
+                    // 如果把域名改为1trojan.cfeng.space这里会报错
                     Log::log_with_endpoint(in_endpoint, "cannot resolve remote server hostname " + config.remote_addr + ": " + error.message(), Log::ERROR);
                     destroy();
                     return;
                 }
-                auto iterator = results.begin();
+                auto iterator = results.cbegin();
                 Log::log_with_endpoint(in_endpoint, config.remote_addr + " is resolved to " + iterator->endpoint().address().to_string(), Log::ALL);
                 boost::system::error_code ec;
                 out_socket.next_layer().open(iterator->endpoint().protocol(), ec);
@@ -237,25 +202,25 @@ void ClientSession::in_sent() {
                     return;
                 }
                 if (config.tcp.no_delay) {
-                    out_socket.next_layer().set_option(tcp::no_delay(true));
+                        out_socket.next_layer().set_option(tcp::no_delay(true));
                 }
                 if (config.tcp.keep_alive) {
                     out_socket.next_layer().set_option(boost::asio::socket_base::keep_alive(true));
                 }
-#ifdef TCP_FASTOPEN_CONNECT
+#ifdef TCP_FASTOPEN_CONNECT  // Default 0
                 if (config.tcp.fast_open) {
                     using fastopen_connect = boost::asio::detail::socket_option::boolean<IPPROTO_TCP, TCP_FASTOPEN_CONNECT>;
                     boost::system::error_code ec;
                     out_socket.next_layer().set_option(fastopen_connect(true), ec);
                 }
 #endif // TCP_FASTOPEN_CONNECT
-                out_socket.next_layer().async_connect(*iterator, [this, self](const boost::system::error_code error) {
+                out_socket.next_layer().async_connect(*iterator, [this, self = shared_from_this()](const boost::system::error_code error) {
                     if (error) {
                         Log::log_with_endpoint(in_endpoint, "cannot establish connection to remote server " + config.remote_addr + ':' + to_string(config.remote_port) + ": " + error.message(), Log::ERROR);
                         destroy();
                         return;
                     }
-                    out_socket.async_handshake(stream_base::client, [this, self](const boost::system::error_code error) {
+                    out_socket.async_handshake(stream_base::client, [this, self = shared_from_this()](const boost::system::error_code error) {
                         if (error) {
                             Log::log_with_endpoint(in_endpoint, "SSL handshake failed with " + config.remote_addr + ':' + to_string(config.remote_port) + ": " + error.message(), Log::ERROR);
                             destroy();
@@ -270,18 +235,8 @@ void ClientSession::in_sent() {
                                 Log::log_with_endpoint(in_endpoint, "SSL session reused");
                             }
                         }
-                        boost::system::error_code ec;
-                        if (is_udp) {
-                            if (!first_packet_recv) {
-                                udp_socket.cancel(ec);
-                            }
-                            status = UDP_FORWARD;
-                        } else {
-                            if (!first_packet_recv) {
-                                in_socket.cancel(ec);
-                            }
-                            status = FORWARD;
-                        }
+
+                        status = FORWARD;
                         out_async_read();
                         out_async_write(out_write_buf);
                     });
@@ -302,102 +257,49 @@ void ClientSession::in_sent() {
 }
 
 void ClientSession::out_recv(const string &data) {
-    if (status == FORWARD) {
+
         recv_len += data.length();
         in_async_write(data);
-    } else if (status == UDP_FORWARD) {
-        udp_data_buf += data;
-        udp_sent();
-    }
+
 }
 
 void ClientSession::out_sent() {
-    if (status == FORWARD) {
-        in_async_read();
-    } else if (status == UDP_FORWARD) {
-        udp_async_read();
-    }
-}
 
-void ClientSession::udp_recv(const string &data, const udp::endpoint&) {
-    if (data.length() == 0) {
-        return;
-    }
-    if (data.length() < 3 || data[0] || data[1] || data[2]) {
-        Log::log_with_endpoint(in_endpoint, "bad UDP packet", Log::ERROR);
-        destroy();
-        return;
-    }
-    SOCKS5Address address;
-    size_t address_len;
-    bool is_addr_valid = address.parse(data.substr(3), address_len);
-    if (!is_addr_valid) {
-        Log::log_with_endpoint(in_endpoint, "bad UDP packet", Log::ERROR);
-        destroy();
-        return;
-    }
-    size_t length = data.length() - 3 - address_len;
-    Log::log_with_endpoint(in_endpoint, "sent a UDP packet of length " + to_string(length) + " bytes to " + address.address + ':' + to_string(address.port));
-    string packet = data.substr(3, address_len) + char(uint8_t(length >> 8)) + char(uint8_t(length & 0xFF)) + "\r\n" + data.substr(address_len + 3);
-    sent_len += length;
-    if (status == CONNECT) {
-        first_packet_recv = true;
-        out_write_buf += packet;
-    } else if (status == UDP_FORWARD) {
-        out_async_write(packet);
-    }
-}
-
-void ClientSession::udp_sent() {
-    if (status == UDP_FORWARD) {
-        UDPPacket packet;
-        size_t packet_len;
-        bool is_packet_valid = packet.parse(udp_data_buf, packet_len);
-        if (!is_packet_valid) {
-            if (udp_data_buf.length() > MAX_LENGTH) {
-                Log::log_with_endpoint(in_endpoint, "UDP packet too long", Log::ERROR);
-                destroy();
-                return;
-            }
-            out_async_read();
-            return;
-        }
-        Log::log_with_endpoint(in_endpoint, "received a UDP packet of length " + to_string(packet.length) + " bytes from " + packet.address.address + ':' + to_string(packet.address.port));
-        SOCKS5Address address;
-        size_t address_len;
-        bool is_addr_valid = address.parse(udp_data_buf, address_len);
-        if (!is_addr_valid) {
-            Log::log_with_endpoint(in_endpoint, "udp_sent: invalid UDP packet address", Log::ERROR);
-            destroy();
-            return;
-        }
-        string reply = string("\x00\x00\x00", 3) + udp_data_buf.substr(0, address_len) + packet.payload;
-        udp_data_buf = udp_data_buf.substr(packet_len);
-        recv_len += packet.length;
-        udp_async_write(reply, udp_recv_endpoint);
-    }
+        in_async_read();  // 这里应该是最后一层
 }
 
 void ClientSession::destroy() {
+    // TODO
+    // 表面上看这个程序正常情况下是不会出错的，也就不会被销毁，不会被析构掉，
+    // 但是事实上，程序一直检查error状态，在访问http时，事实上当接受方读取完发送方的所有数据时就会收到boost::asio::error::eof的错误代码
+    // 但是在作者的程序中一收到eof就会立即关闭in_socket，
+    // 试想： in_socket刚读完最后一条请求，然后用out_soket发送出去，因为是异步,in_socket又继续收到eof，就立即关闭in_socket
+    // 那么上一条的请求得到的反馈如何被in_socket接受。
+    // 所有我自己对in_socket也加了延迟关闭
+    // 这里的前提是假设所有的出错是因为eof,但是事实上如果收到其他错误是否应该直接断开，并没有考虑
     if (status == DESTROY) {
         return;
     }
     status = DESTROY;
     Log::log_with_endpoint(in_endpoint, "disconnected, " + to_string(recv_len) + " bytes received, " + to_string(sent_len) + " bytes sent, lasted for " + to_string(time(nullptr) - start_time) + " seconds", Log::INFO);
-    boost::system::error_code ec;
     resolver.cancel();
     if (in_socket.is_open()) {
-        in_socket.cancel(ec);
-        in_socket.shutdown(tcp::socket::shutdown_both, ec);
-        in_socket.close(ec);
-    }
-    if (udp_socket.is_open()) {
-        udp_socket.cancel(ec);
-        udp_socket.close(ec);
+
+        auto basesocket_shutdown_cb = [this, self = shared_from_this()](const boost::system::error_code error) {
+            if (error == boost::asio::error::operation_aborted) {
+                return;
+            }
+            boost::system::error_code ec;
+            in_socket.cancel(ec);
+            in_socket.shutdown(tcp::socket::shutdown_both, ec);
+            in_socket.close(ec);
+        };
+
+        basesocket_shutdown_timer.expires_after(chrono::seconds(SSL_SHUTDOWN_TIMEOUT));
+        basesocket_shutdown_timer.async_wait(basesocket_shutdown_cb);
     }
     if (out_socket.next_layer().is_open()) {
-        auto self = shared_from_this();
-        auto ssl_shutdown_cb = [this, self](const boost::system::error_code error) {
+        auto ssl_shutdown_cb = [this, self = shared_from_this()](const boost::system::error_code error) {
             if (error == boost::asio::error::operation_aborted) {
                 return;
             }
@@ -407,8 +309,7 @@ void ClientSession::destroy() {
             out_socket.next_layer().shutdown(tcp::socket::shutdown_both, ec);
             out_socket.next_layer().close(ec);
         };
-        out_socket.next_layer().cancel(ec);
-        out_socket.async_shutdown(ssl_shutdown_cb);
+
         ssl_shutdown_timer.expires_after(chrono::seconds(SSL_SHUTDOWN_TIMEOUT));
         ssl_shutdown_timer.async_wait(ssl_shutdown_cb);
     }

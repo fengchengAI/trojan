@@ -72,27 +72,3 @@ bool SOCKS5Address::parse(const string &data, size_t &address_len) {
     }
     return false;
 }
-
-string SOCKS5Address::generate(const udp::endpoint &endpoint) {
-    if (endpoint.address().is_unspecified()) {
-        return string("\x01\x00\x00\x00\x00\x00\x00", 7);
-    }
-    string ret;
-    if (endpoint.address().is_v4()) {
-        ret += '\x01';
-        auto ip = endpoint.address().to_v4().to_bytes();
-        for (int i = 0; i < 4; ++i) {
-            ret += char(ip[i]);
-        }
-    }
-    if (endpoint.address().is_v6()) {
-        ret += '\x04';
-        auto ip = endpoint.address().to_v6().to_bytes();
-        for (int i = 0; i < 16; ++i) {
-            ret += char(ip[i]);
-        }
-    }
-    ret += char(uint8_t(endpoint.port() >> 8));
-    ret += char(uint8_t(endpoint.port() & 0xFF));
-    return ret;
-}

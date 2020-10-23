@@ -30,7 +30,7 @@ int TrojanRequest::parse(const string &data) {
     if (payload.length() == 0 || (payload[0] != CONNECT && payload[0] != UDP_ASSOCIATE)) {
         return -1;
     }
-    command = static_cast<Command>(payload[0]);
+    //command = static_cast<Command>(payload[0]);
     size_t address_len;
     bool is_addr_valid = address.parse(payload.substr(1), address_len);
     if (!is_addr_valid || payload.length() < address_len + 3 || payload.substr(address_len + 1, 2) != "\r\n") {
@@ -40,18 +40,3 @@ int TrojanRequest::parse(const string &data) {
     return data.length();
 }
 
-string TrojanRequest::generate(const string &password, const string &domainname, uint16_t port, bool tcp) {
-    string ret = password + "\r\n";
-    if (tcp) {
-        ret += '\x01';
-    } else {
-        ret += '\x03';
-    }
-    ret += '\x03';
-    ret += char(uint8_t(domainname.length()));
-    ret += domainname;
-    ret += char(uint8_t(port >> 8));
-    ret += char(uint8_t(port & 0xFF));
-    ret += "\r\n";
-    return ret;
-}

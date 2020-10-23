@@ -22,21 +22,17 @@
 
 #include "session.h"
 #include <boost/asio/ssl.hpp>
-#include "core/authenticator.h"
 
 class ServerSession : public Session {
 private:
     enum Status {
         HANDSHAKE,
         FORWARD,
-        UDP_FORWARD,
         DESTROY
     } status;
-    boost::asio::ssl::stream<boost::asio::ip::tcp::socket>in_socket;
+    boost::asio::ssl::stream<boost::asio::ip::tcp::socket>in_socket;  // 这是trojan服务器发送给trojan客户端的
     boost::asio::ip::tcp::socket out_socket;
-    boost::asio::ip::udp::resolver udp_resolver;
-    Authenticator *auth;
-    std::string auth_password;
+
     const std::string &plain_http_response;
     void destroy();
     void in_async_read();
@@ -47,14 +43,11 @@ private:
     void out_async_write(const std::string &data);
     void out_recv(const std::string &data);
     void out_sent();
-    void udp_async_read();
-    void udp_async_write(const std::string &data, const boost::asio::ip::udp::endpoint &endpoint);
-    void udp_recv(const std::string &data, const boost::asio::ip::udp::endpoint &endpoint);
-    void udp_sent();
+
 public:
-    ServerSession(const Config &config, boost::asio::io_context &io_context, boost::asio::ssl::context &ssl_context, Authenticator *auth, const std::string &plain_http_response);
+    ServerSession(const Config &config, boost::asio::io_context &io_context, boost::asio::ssl::context &ssl_context, const std::string &plain_http_response);
     boost::asio::ip::tcp::socket& accept_socket() override;
-    void start() override;
+    void start(const std::string &) override;
 };
 
 #endif // _SERVERSESSION_H_

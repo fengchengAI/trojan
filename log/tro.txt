@@ -1,0 +1,143 @@
+2020-10-22 13:43:31[FATAL] fatal: /usr/local/etc/trojan/bucy.json: cannot open file
+2020-10-22 13:43:31[FATAL] exiting. . . 
+2020-10-22 13:44:28[FATAL] fatal: /usr/local/etc/trojan/bucy.json: cannot open file
+2020-10-22 13:44:28[FATAL] exiting. . . 
+2020-10-22 13:44:43[FATAL] fatal: /usr/local/etc/trojan/bucy.json: cannot open file
+2020-10-22 13:44:43[FATAL] exiting. . . 
+2020-10-22 13:45:27[FATAL] fatal: /usr/local/etc/trojan/bucy.json: cannot open file
+2020-10-22 13:45:27[FATAL] exiting. . . 
+2020-10-22 13:46:45[WARN] trojan service (client) started at 127.0.0.1:1080
+2020-10-22 13:46:51[INFO] 127.0.0.1:39666 requested connection to github.com:443
+2020-10-22 13:46:51[INFO] 127.0.0.1:39668 requested connection to github.com:443
+2020-10-22 13:46:51[INFO] 127.0.0.1:39670 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39680 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39684 requested connection to avatars2.githubusercontent.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39688 requested connection to avatars1.githubusercontent.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39692 requested connection to www.google-analytics.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39696 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39698 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39700 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39702 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39704 requested connection to github.githubassets.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39716 requested connection to www.google.com:443
+2020-10-22 13:46:53[INFO] 127.0.0.1:39696 disconnected, 0 bytes received, 524 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:53[INFO] 127.0.0.1:39698 disconnected, 0 bytes received, 524 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:53[INFO] 127.0.0.1:39702 disconnected, 0 bytes received, 524 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:53[INFO] 127.0.0.1:39700 disconnected, 0 bytes received, 524 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:53[INFO] 127.0.0.1:39704 disconnected, 0 bytes received, 524 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:54[INFO] 127.0.0.1:39720 requested connection to www.google.com:443
+2020-10-22 13:46:54[INFO] 127.0.0.1:39726 requested connection to www.google.com:443
+2020-10-22 13:46:54[INFO] 127.0.0.1:39720 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:54[INFO] 127.0.0.1:39726 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:54[INFO] 127.0.0.1:39730 requested connection to www.gstatic.com:443
+2020-10-22 13:46:54[INFO] 127.0.0.1:39734 requested connection to github.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39738 requested connection to fonts.gstatic.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39742 requested connection to fonts.googleapis.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39746 requested connection to youtube.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39748 requested connection to youtube.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39754 requested connection to github.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39758 requested connection to content-autofill.googleapis.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39762 requested connection to avatars3.githubusercontent.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39766 requested connection to github.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39770 requested connection to www.gstatic.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39774 requested connection to alive.github.com:443
+2020-10-22 13:46:55[INFO] 127.0.0.1:39770 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 13:46:55[INFO] 127.0.0.1:39778 requested connection to www.youtube.com:443
+2020-10-22 13:46:56[INFO] 127.0.0.1:39784 requested connection to collector.githubapp.com:443
+2020-10-22 13:46:56[INFO] 127.0.0.1:39788 requested connection to api.github.com:443
+2020-10-22 13:46:57[INFO] 127.0.0.1:39792 requested connection to api.github.com:443
+2020-10-22 13:47:00[INFO] 127.0.0.1:39798 requested connection to ogs.google.com:443
+2020-10-22 13:47:00[INFO] 127.0.0.1:39804 requested connection to i.ytimg.com:443
+2020-10-22 13:47:02[INFO] 127.0.0.1:39810 requested connection to googleads.g.doubleclick.net:443
+2020-10-22 13:47:03[INFO] 127.0.0.1:39814 requested connection to yt3.ggpht.com:443
+2020-10-22 13:47:03[INFO] 127.0.0.1:39818 requested connection to securepubads.g.doubleclick.net:443
+2020-10-22 13:47:04[INFO] 127.0.0.1:39822 requested connection to lh5.googleusercontent.com:443
+2020-10-22 13:47:04[INFO] 127.0.0.1:39828 requested connection to s.ytimg.com:443
+2020-10-22 13:47:05[INFO] 127.0.0.1:39832 requested connection to webim.tim.qq.com:443
+2020-10-22 13:47:09[INFO] 127.0.0.1:39840 requested connection to static.doubleclick.net:443
+2020-10-22 13:47:10[INFO] 127.0.0.1:39734 disconnected, 3704 bytes received, 581 bytes sent, lasted for 16 seconds
+2020-10-22 13:47:10[INFO] 127.0.0.1:39766 disconnected, 3704 bytes received, 581 bytes sent, lasted for 15 seconds
+2020-10-22 13:47:10[INFO] 127.0.0.1:39754 disconnected, 3704 bytes received, 581 bytes sent, lasted for 15 seconds
+2020-10-22 13:47:11[INFO] 127.0.0.1:39846 requested connection to r2---sn-n4v7knlk.googlevideo.com:443
+2020-10-22 13:47:11[INFO] 127.0.0.1:39792 disconnected, 5747 bytes received, 19501 bytes sent, lasted for 14 seconds
+2020-10-22 13:47:11[INFO] 127.0.0.1:39848 requested connection to r2---sn-n4v7knlk.googlevideo.com:443
+2020-10-22 13:47:14[INFO] 127.0.0.1:39788 disconnected, 3703 bytes received, 581 bytes sent, lasted for 18 seconds
+2020-10-22 13:47:20[INFO] 127.0.0.1:39832 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:47:21[INFO] 127.0.0.1:39864 requested connection to webim.tim.qq.com:443
+2020-10-22 13:47:36[INFO] 127.0.0.1:39864 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:47:38[INFO] 127.0.0.1:39886 requested connection to webim.tim.qq.com:443
+2020-10-22 13:47:53[INFO] 127.0.0.1:39886 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:47:54[INFO] 127.0.0.1:39906 requested connection to beacons.gcp.gvt2.com:443
+2020-10-22 13:47:55[INFO] 127.0.0.1:39910 requested connection to webim.tim.qq.com:443
+2020-10-22 13:47:55[INFO] 127.0.0.1:39668 disconnected, 10354 bytes received, 3007 bytes sent, lasted for 64 seconds
+2020-10-22 13:47:55[INFO] 127.0.0.1:39666 disconnected, 55500 bytes received, 5598 bytes sent, lasted for 64 seconds
+2020-10-22 13:48:00[INFO] 127.0.0.1:39784 disconnected, 4196 bytes received, 2865 bytes sent, lasted for 64 seconds
+2020-10-22 13:48:00[INFO] 127.0.0.1:39748 disconnected, 4405 bytes received, 581 bytes sent, lasted for 65 seconds
+2020-10-22 13:48:00[INFO] 127.0.0.1:39920 requested connection to google.com:443
+2020-10-22 13:48:05[INFO] 127.0.0.1:39798 disconnected, 4406 bytes received, 581 bytes sent, lasted for 65 seconds
+2020-10-22 13:48:05[INFO] 127.0.0.1:39928 requested connection to clients1.google.com:443
+2020-10-22 13:48:07[INFO] 127.0.0.1:39934 requested connection to clients1.google.com:443
+2020-10-22 13:48:07[INFO] 127.0.0.1:39928 disconnected, 0 bytes received, 517 bytes sent, lasted for 2 seconds
+2020-10-22 13:48:09[INFO] 127.0.0.1:39940 requested connection to i1.ytimg.com:443
+2020-10-22 13:48:10[INFO] 127.0.0.1:39910 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:48:12[INFO] 127.0.0.1:39948 requested connection to webim.tim.qq.com:443
+2020-10-22 13:48:25[INFO] 127.0.0.1:39964 requested connection to r5---sn-n4v7knlz.googlevideo.com:443
+2020-10-22 13:48:25[INFO] 127.0.0.1:39966 requested connection to r5---sn-n4v7knlz.googlevideo.com:443
+2020-10-22 13:48:25[INFO] 127.0.0.1:39972 requested connection to r5---sn-n4v7knlz.googlevideo.com:443
+2020-10-22 13:48:25[INFO] 127.0.0.1:39976 requested connection to r5---sn-n4v7knlz.googlevideo.com:443
+2020-10-22 13:48:27[INFO] 127.0.0.1:39948 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:48:27[INFO] 127.0.0.1:39982 requested connection to r5---sn-n4v7knlz.googlevideo.com:443
+2020-10-22 13:48:29[INFO] 127.0.0.1:39988 requested connection to webim.tim.qq.com:443
+2020-10-22 13:48:44[INFO] 127.0.0.1:39988 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:48:46[INFO] 127.0.0.1:40014 requested connection to webim.tim.qq.com:443
+2020-10-22 13:49:01[INFO] 127.0.0.1:40014 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:49:01[INFO] 127.0.0.1:39976 disconnected, 38613926 bytes received, 29583 bytes sent, lasted for 36 seconds
+2020-10-22 13:49:03[INFO] 127.0.0.1:40034 requested connection to webim.tim.qq.com:443
+2020-10-22 13:49:13[INFO] 127.0.0.1:39846 disconnected, 335261 bytes received, 6363 bytes sent, lasted for 122 seconds
+2020-10-22 13:49:18[INFO] 127.0.0.1:40034 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:49:20[INFO] 127.0.0.1:40056 requested connection to webim.tim.qq.com:443
+2020-10-22 13:49:23[INFO] 127.0.0.1:39848 disconnected, 753094 bytes received, 7984 bytes sent, lasted for 132 seconds
+2020-10-22 13:49:29[INFO] 127.0.0.1:39966 disconnected, 5142 bytes received, 581 bytes sent, lasted for 64 seconds
+2020-10-22 13:49:29[INFO] 127.0.0.1:39964 disconnected, 5142 bytes received, 581 bytes sent, lasted for 64 seconds
+2020-10-22 13:49:35[INFO] 127.0.0.1:40056 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:49:37[INFO] 127.0.0.1:40076 requested connection to webim.tim.qq.com:443
+2020-10-22 13:49:52[INFO] 127.0.0.1:40076 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:49:54[INFO] 127.0.0.1:40096 requested connection to webim.tim.qq.com:443
+2020-10-22 13:50:09[INFO] 127.0.0.1:40096 disconnected, 4065 bytes received, 1565 bytes sent, lasted for 15 seconds
+2020-10-22 13:50:16[INFO] 127.0.0.1:40122 requested connection to webim.tim.qq.com:443
+2020-10-22 13:50:23[WARN] got signal: 15
+2020-10-22 13:50:23[WARN] trojan service stopped
+2020-10-22 17:17:17[WARN] trojan service (client) started at 127.0.0.1:1080
+2020-10-22 18:02:05[WARN] trojan service (client) started at 127.0.0.1:1080
+2020-10-22 18:02:16[INFO] 127.0.0.1:51750 requested connection to youtube.com:443
+2020-10-22 18:02:16[INFO] 127.0.0.1:51754 requested connection to www.youtube.com:443
+2020-10-22 18:02:17[INFO] 127.0.0.1:51758 requested connection to www.googleapis.com:443
+2020-10-22 18:02:17[INFO] 127.0.0.1:51762 requested connection to i.ytimg.com:443
+2020-10-22 18:02:17[INFO] 127.0.0.1:51766 requested connection to adservice.google.com:443
+2020-10-22 18:02:17[INFO] 127.0.0.1:51770 requested connection to fonts.gstatic.com:443
+2020-10-22 18:02:18[INFO] 127.0.0.1:51774 requested connection to googleads.g.doubleclick.net:443
+2020-10-22 18:02:18[INFO] 127.0.0.1:51778 requested connection to www.google.com:443
+2020-10-22 18:02:19[INFO] 127.0.0.1:51782 requested connection to securepubads.g.doubleclick.net:443
+2020-10-22 18:02:20[INFO] 127.0.0.1:51786 requested connection to yt3.ggpht.com:443
+2020-10-22 18:02:20[INFO] 127.0.0.1:51790 requested connection to www.gstatic.com:443
+2020-10-22 18:02:21[INFO] 127.0.0.1:51796 requested connection to clients2.google.com:443
+2020-10-22 18:02:21[INFO] 127.0.0.1:51800 requested connection to mtalk.google.com:5228
+2020-10-22 18:02:21[INFO] 127.0.0.1:51804 requested connection to update.googleapis.com:443
+2020-10-22 18:02:21[INFO] 127.0.0.1:51808 requested connection to pagead2.googlesyndication.com:443
+2020-10-22 18:02:21[INFO] 127.0.0.1:51800 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51754 disconnected, 119723 bytes received, 44972 bytes sent, lasted for 5 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51766 disconnected, 5855 bytes received, 1766 bytes sent, lasted for 4 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51774 disconnected, 4883 bytes received, 1253 bytes sent, lasted for 3 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51782 disconnected, 4001 bytes received, 1517 bytes sent, lasted for 2 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51778 disconnected, 4016 bytes received, 1748 bytes sent, lasted for 3 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51762 disconnected, 215736 bytes received, 2564 bytes sent, lasted for 4 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51786 disconnected, 9403 bytes received, 1146 bytes sent, lasted for 1 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51790 disconnected, 6336 bytes received, 1179 bytes sent, lasted for 1 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51796 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51758 disconnected, 0 bytes received, 517 bytes sent, lasted for 4 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51770 disconnected, 3263 bytes received, 581 bytes sent, lasted for 4 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51750 disconnected, 4405 bytes received, 581 bytes sent, lasted for 5 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51804 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 18:02:21[INFO] 127.0.0.1:51808 disconnected, 0 bytes received, 517 bytes sent, lasted for 0 seconds
+2020-10-22 18:02:23[WARN] got signal: 15
+2020-10-22 18:02:23[WARN] trojan service stopped

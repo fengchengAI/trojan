@@ -18,23 +18,44 @@
  */
 
 #include <cstdlib>
+#include <unistd.h>  // 路径转化
 #include <iostream>
+#include <string>
 #include <boost/asio/signal_set.hpp>
 #include <boost/program_options.hpp>
 #include <boost/version.hpp>
 #include <openssl/opensslv.h>
-#ifdef ENABLE_MYSQL
-#include <mysql.h>
-#endif // ENABLE_MYSQL
+#include <nlohmann/json.hpp>
+
 #include "core/service.h"
 #include "core/version.h"
+
 using namespace std;
 using namespace boost::asio;
 namespace po = boost::program_options;
+using json = nlohmann::json;
+
 
 #ifndef DEFAULT_CONFIG
 #define DEFAULT_CONFIG "config.json"
 #endif // DEFAULT_CONFIG
+// 这里是系统信号函数的处理，如当系统执行ctrl+c时，会触发相应的信号处理
+
+string getAbsolutePath(string &parm){ // 这里主要是处理相对路径
+    string root(getcwd(nullptr,0));
+    if (parm.substr(0,2)=="./"){
+        parm = parm.substr(2);
+    }
+    while(parm.find("../")!=string::npos && root.rfind('/')!=string::npos){
+        parm.replace(0,3,"");
+
+        auto it = root.rfind('/');
+        root.replace(root.cbegin()+it,root.cend(),"");
+
+    }
+    return root+"/"+parm;
+
+}
 
 void signal_async_wait(signal_set &sig, Service &service, bool &restart) {
     sig.async_wait([&](const boost::system::error_code error, int signum) {
@@ -44,10 +65,10 @@ void signal_async_wait(signal_set &sig, Service &service, bool &restart) {
         Log::log_with_date_time("got signal: " + to_string(signum), Log::WARN);
         switch (signum) {
             case SIGINT:
+                exit(0);
             case SIGTERM:
                 service.stop();
                 break;
-#ifndef _WIN32
             case SIGHUP:
                 restart = true;
                 service.stop();
@@ -56,7 +77,6 @@ void signal_async_wait(signal_set &sig, Service &service, bool &restart) {
                 service.reload_cert();
                 signal_async_wait(sig, service, restart);
                 break;
-#endif // _WIN32
         }
     });
 }
@@ -68,19 +88,21 @@ int main(int argc, const char *argv[]) {
         string log_file;
         string keylog_file;
         bool test;
+        
+        //选项描述器,其参数为该描述器的名字,描述当前的程序定义了哪些选项
         po::options_description desc("options");
         desc.add_options()
-            ("config,c", po::value<string>(&config_file)->default_value(DEFAULT_CONFIG)->value_name("CONFIG"), "specify config file")
+            ("config,c", po::value<string>(&config_file)->value_name("CONFIG"), "specify config file")
             ("help,h", "print help message")
             ("keylog,k", po::value<string>(&keylog_file)->value_name("KEYLOG"), "specify keylog file location (OpenSSL >= 1.1.1)")
             ("log,l", po::value<string>(&log_file)->value_name("LOG"), "specify log file location")
             ("test,t", po::bool_switch(&test), "test config file")
             ("version,v", "print version and build info")
         ;
-        po::positional_options_description pd;
-        pd.add("config", 1);
-        po::variables_map vm;
-        po::store(po::command_line_parser(argc, argv).options(desc).positional(pd).run(), vm);
+
+
+        po::variables_map vm;   //容器,用于存储解析后的选项
+        po::store(po::parse_command_line(argc, argv, desc), vm);
         po::notify(vm);
         if (vm.count("help")) {
             Log::log(string("usage: ") + argv[0] + " [-htv] [-l LOG] [-k KEYLOG] [[-c] CONFIG]", Log::FATAL);
@@ -89,11 +111,7 @@ int main(int argc, const char *argv[]) {
         }
         if (vm.count("version")) {
             Log::log(string("Boost ") + BOOST_LIB_VERSION + ", " + OpenSSL_version(OPENSSL_VERSION), Log::FATAL);
-#ifdef ENABLE_MYSQL
-            Log::log(string(" [Enabled] MySQL Support (") + mysql_get_client_info() + ')', Log::FATAL);
-#else // ENABLE_MYSQL
-            Log::log("[Disabled] MySQL Support", Log::FATAL);
-#endif // ENABLE_MYSQL
+
 #ifdef TCP_FASTOPEN
             Log::log(" [Enabled] TCP_FASTOPEN Support", Log::FATAL);
 #else // TCP_FASTOPEN
@@ -109,11 +127,7 @@ int main(int argc, const char *argv[]) {
 #else // ENABLE_SSL_KEYLOG
             Log::log("[Disabled] SSL KeyLog Support", Log::FATAL);
 #endif // ENABLE_SSL_KEYLOG
-#ifdef ENABLE_NAT
-            Log::log(" [Enabled] NAT Support", Log::FATAL);
-#else // ENABLE_NAT
-            Log::log("[Disabled] NAT Support", Log::FATAL);
-#endif // ENABLE_NAT
+
 #ifdef ENABLE_TLS13_CIPHERSUITES
             Log::log(" [Enabled] TLS1.3 Ciphersuites Support", Log::FATAL);
 #else // ENABLE_TLS13_CIPHERSUITES
@@ -132,21 +146,41 @@ int main(int argc, const char *argv[]) {
             exit(EXIT_SUCCESS);
         }
         if (vm.count("log")) {
+            log_file = getAbsolutePath(log_file);
             Log::redirect(log_file);
         }
         if (vm.count("keylog")) {
             Log::redirect_keylog(keylog_file);
         }
+        
         bool restart;
         Config config;
+
+        /*
+        std::ifstream i("/home/feng/Github/CLionProjects/Test_ICMP/gui-config.json");
+        json j;
+        i >> j;
+
+        for (auto site : j["configs"]){
+            config.multi_web.push_back(site["server"]);
+        }
+        */
         do {
             restart = false;
-            if (config.sip003()) {
+            if (config.sip003()) { //SIP003 是SS的一个配置或者协议
                 Log::log_with_date_time("SIP003 is loaded", Log::WARN);
             } else {
-                config.load(config_file);
+                if (vm.count("config")){
+                    config.load(getAbsolutePath(config_file));
+                }
+                 else{
+                    config.load(DEFAULT_CONFIG);
+                 }
             }
             Service service(config, test);
+            // 如果test为真，事实上并没有做什么，仅仅是测试程序没有报错
+            // 生产中应该false
+
             if (test) {
                 Log::log("The config file looks good.", Log::OFF);
                 exit(EXIT_SUCCESS);
@@ -154,21 +188,20 @@ int main(int argc, const char *argv[]) {
             signal_set sig(service.service());
             sig.add(SIGINT);
             sig.add(SIGTERM);
-#ifndef _WIN32
             sig.add(SIGHUP);
             sig.add(SIGUSR1);
-#endif // _WIN32
             signal_async_wait(sig, service, restart);
             service.run();
             if (restart) {
                 Log::log_with_date_time("trojan service restarting. . . ", Log::WARN);
             }
         } while (restart);
-        Log::reset();
+        Log::stop();
         exit(EXIT_SUCCESS);
     } catch (const exception &e) {
         Log::log_with_date_time(string("fatal: ") + e.what(), Log::FATAL);
         Log::log_with_date_time("exiting. . . ", Log::FATAL);
+        Log::stop();
         exit(EXIT_FAILURE);
     }
 }

@@ -19,7 +19,6 @@
 
 #include "config.h"
 #include <cstdlib>
-#include <sstream>
 #include <stdexcept>
 #include <boost/property_tree/json_parser.hpp>
 #include <openssl/evp.h>
@@ -43,10 +42,6 @@ void Config::populate(const ptree &tree) {
     string rt = tree.get("run_type", string("client"));
     if (rt == "server") {
         run_type = SERVER;
-    } else if (rt == "forward") {
-        run_type = FORWARD;
-    } else if (rt == "nat") {
-        run_type = NAT;
     } else if (rt == "client") {
         run_type = CLIENT;
     } else {
@@ -56,16 +51,15 @@ void Config::populate(const ptree &tree) {
     local_port = tree.get("local_port", uint16_t());
     remote_addr = tree.get("remote_addr", string());
     remote_port = tree.get("remote_port", uint16_t());
-    target_addr = tree.get("target_addr", string());
-    target_port = tree.get("target_port", uint16_t());
-    map<string, string>().swap(password);
+
+
+    map<string, string>().swap(password);  // 密文，明文
     if (tree.get_child_optional("password")) {
         for (auto& item: tree.get_child("password")) {
             string p = item.second.get_value<string>();
             password[SHA224(p)] = p;
         }
     }
-    udp_timeout = tree.get("udp_timeout", 60);
     log_level = static_cast<Log::Level>(tree.get("log_level", 1));
     ssl.verify = tree.get("ssl.verify", true);
     ssl.verify_hostname = tree.get("ssl.verify_hostname", true);
@@ -102,15 +96,20 @@ void Config::populate(const ptree &tree) {
     tcp.reuse_port = tree.get("tcp.reuse_port", false);
     tcp.fast_open = tree.get("tcp.fast_open", false);
     tcp.fast_open_qlen = tree.get("tcp.fast_open_qlen", 20);
-    mysql.enabled = tree.get("mysql.enabled", false);
-    mysql.server_addr = tree.get("mysql.server_addr", string("127.0.0.1"));
-    mysql.server_port = tree.get("mysql.server_port", uint16_t(3306));
-    mysql.database = tree.get("mysql.database", string("trojan"));
-    mysql.username = tree.get("mysql.username", string("trojan"));
-    mysql.password = tree.get("mysql.password", string());
-    mysql.key = tree.get("mysql.key", string());
-    mysql.cert = tree.get("mysql.cert", string());
-    mysql.ca = tree.get("mysql.ca", string());
+
+    icmp.enable_mutil_host = tree.get("icmp.enable_mutil_host",false);
+    icmp.MAX_NUM = tree.get("icmp.MAX_NUM",3);
+    icmp.TIME_OUT_WAIT = tree.get("icmp.TIME_OUT_WAIT",5);
+    icmp.SENT_RATE = tree.get("icmp.SENT_RATE",10);
+    icmp.CHECK_RATE = tree.get("icmp.CHECK_RATE",1);
+    icmp.TIME_OUT = tree.get("icmp.TIME_OUT",400);
+
+    //这里是比作者多的，假设会有多个节点信息，就写在这里
+    if (tree.get_child_optional("icmp.multi_web")) {
+        for (auto& item: tree.get_child("icmp.multi_web")) {
+            icmp.multi_web.push_back(item.second.get_value<string>());
+        }
+    }
 }
 
 bool Config::sip003() {
@@ -125,19 +124,12 @@ bool Config::sip003() {
             local_port = atoi(getenv("SS_REMOTE_PORT"));
             break;
         case CLIENT:
-        case NAT:
-            throw runtime_error("SIP003 with wrong run_type");
-        case FORWARD:
-            remote_addr = getenv("SS_REMOTE_HOST");
-            remote_port = atoi(getenv("SS_REMOTE_PORT"));
-            local_addr = getenv("SS_LOCAL_HOST");
-            local_port = atoi(getenv("SS_LOCAL_PORT"));
             break;
     }
     return true;
 }
 
-string Config::SHA224(const string &message) {
+string Config::SHA224(const string &message) {  // 对密码进行加密
     uint8_t digest[EVP_MAX_MD_SIZE];
     char mdString[(EVP_MAX_MD_SIZE << 1) + 1];
     unsigned int digest_len;

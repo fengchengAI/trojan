@@ -27,30 +27,39 @@
 #include <boost/asio/steady_timer.hpp>
 #include "core/config.h"
 
+#define MAX_LENGTH  8192
+#define SSL_SHUTDOWN_TIMEOUT  60
+
+
+// 这里假设所有的网页都是基于tcp(http2)的，而不是udp(http3)，所以删除了大量的udp代码
 class Session : public std::enable_shared_from_this<Session> {
 protected:
-    enum {
-        MAX_LENGTH = 8192,
-        SSL_SHUTDOWN_TIMEOUT = 30
-    };
+
     const Config &config;
-    uint8_t in_read_buf[MAX_LENGTH]{};
-    uint8_t out_read_buf[MAX_LENGTH]{};
-    uint8_t udp_read_buf[MAX_LENGTH]{};
-    uint64_t recv_len;
-    uint64_t sent_len;
+    char in_read_buf[MAX_LENGTH]{};
+    char out_read_buf[MAX_LENGTH]{};
+    uint64_t recv_len;    //对应udp_data_buf长度
+    uint64_t sent_len;   //对应out_write_buf长度
     time_t start_time{};
     std::string out_write_buf;
-    std::string udp_data_buf;
+    //client： 这是从本地读取的数据，并加上了trojan头的一个数据，会被用来写出去
+    // service： 这是服务器读取到的client数据，此时存的数据去掉了trojan头信息，这个会被用来访问真正的地址信息
+
+    //std::string udp_data_buf;
     boost::asio::ip::tcp::resolver resolver;
     boost::asio::ip::tcp::endpoint in_endpoint;
-    boost::asio::ip::udp::socket udp_socket;
-    boost::asio::ip::udp::endpoint udp_recv_endpoint;
+    // 和本socket关联的远程address：port
+    // client 为127.0.0.1：port
+    // service 为客户端的address：port
+
+
     boost::asio::steady_timer ssl_shutdown_timer;
+    boost::asio::steady_timer basesocket_shutdown_timer;
+
 public:
     Session(const Config &config, boost::asio::io_context &io_context);
     virtual boost::asio::ip::tcp::socket& accept_socket() = 0;
-    virtual void start() = 0;
+    virtual void start(const std::string &) = 0;
     virtual ~Session();
 };
 

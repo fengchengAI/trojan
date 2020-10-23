@@ -21,83 +21,101 @@
 #include <cstring>
 #include <cerrno>
 #include <stdexcept>
-#include <sstream>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <iostream>
+#include <string>
 #include <boost/date_time/posix_time/posix_time_io.hpp>
-#ifdef ENABLE_ANDROID_LOG
-#include <android/log.h>
-#endif // ENABLE_ANDROID_LOG
 using namespace std;
 using namespace boost::posix_time;
 using namespace boost::asio::ip;
 
+#ifndef DEFAULT_LOG_PATH
+#define DEFAULT_LOG_PATH "log/trojan.log"
+#endif
+
 Log::Level Log::level(INFO);
-FILE *Log::keylog(nullptr);
-FILE *Log::output_stream(stderr);
-Log::LogCallback Log::log_callback{};
+
+
+static const array<string,6> name = {"ALL","INFO","WARN","ERROR","FATAL","OFF"};
+ofstream Log::output(DEFAULT_LOG_PATH,ios_base::out|ios_base::app);
+ofstream Log::keyoutput;
 
 void Log::log(const string &message, Level level) {
-    if (level >= Log::level) {
-#ifdef ENABLE_ANDROID_LOG
-        __android_log_print(ANDROID_LOG_ERROR, "trojan", "%s\n",
-                            message.c_str());
-#else
-        fprintf(output_stream, "%s\n", message.c_str());
-        fflush(output_stream);
-#endif // ENABLE_ANDROID_LOG
-        if (log_callback) {
-            log_callback(message, level);
+    #ifdef ENABLE_LOG
+        if (level >= Log::level) {
+            cout<<message<<endl;
+            if (output.is_open())
+                output<<message<<endl;
+            else cout<<"Open log file failed"<<endl;
         }
-    }
+    #endif
+}
+
+void Log::keylog(const string &message) {
+#ifdef ENABLE_SSL_KEYLOG
+
+    if (keyoutput.is_open())
+            keyoutput<<message<<endl;
+        else keyoutput<<"Open log file failed"<<endl;
+
+#endif
 }
 
 void Log::log_with_date_time(const string &message, Level level) {
-    static const char *level_strings[]= {"ALL", "INFO", "WARN", "ERROR", "FATAL", "OFF"};
-    auto *facet = new time_facet("[%Y-%m-%d %H:%M:%S] ");
-    ostringstream stream;
-    stream.imbue(locale(stream.getloc(), facet));
-    stream << second_clock::local_time();
-    string level_string = '[' + string(level_strings[level]) + "] ";
-    log(stream.str() + level_string + message, level);
+
+    #ifdef ENABLE_LOG
+        time_t t = time(nullptr);
+	    char ch[64] = {0};
+	    strftime(ch, sizeof(ch) - 1, "%Y-%m-%d %H:%M:%S", localtime(&t));
+        string level_string = "[" + name[level] + "] ";
+        string tmp_data = string(ch);
+        log(tmp_data + level_string + message, level);
+    #endif
+
 }
 
 void Log::log_with_endpoint(const tcp::endpoint &endpoint, const string &message, Level level) {
-    log_with_date_time(endpoint.address().to_string() + ':' + to_string(endpoint.port()) + ' ' + message, level);
+
+    #ifdef ENABLE_LOG
+        log_with_date_time(endpoint.address().to_string() + ':' + to_string(endpoint.port()) + ' ' + message, level);
+    #endif
+
+}
+
+void Log::stop(){
+    if (output.is_open()) {
+        output.close();
+    }
+    if (keyoutput.is_open()) {
+        keyoutput.close();
+    }
 }
 
 void Log::redirect(const string &filename) {
-    FILE *fp = fopen(filename.c_str(), "a");
-    if (fp == nullptr) {
+
+    ofstream tmp(filename,ios_base::out|ios_base::app);
+    if (!tmp.is_open()) {
         throw runtime_error(filename + ": " + strerror(errno));
     }
-    if (output_stream != stderr) {
-        fclose(output_stream);
+    if (output.is_open()) {
+        output.close();
     }
-    output_stream = fp;
+    output = move(tmp);
 }
 
 void Log::redirect_keylog(const string &filename) {
-    FILE *fp = fopen(filename.c_str(), "a");
-    if (fp == nullptr) {
+
+#ifdef ENABLE_SSL_KEYLOG
+
+    ofstream tmp(filename,ios_base::out|ios_base::app);
+    if (!tmp.is_open()) {
         throw runtime_error(filename + ": " + strerror(errno));
     }
-    if (keylog != nullptr) {
-        fclose(keylog);
+    if (keyoutput.is_open()) {
+        keyoutput.close();
     }
-    keylog = fp;
+    keyoutput = move(tmp);
+#endif
 }
-
-void Log::set_callback(LogCallback cb) {
-    log_callback = move(cb);
-}
-
-void Log::reset() {
-    if (output_stream != stderr) {
-        fclose(output_stream);
-        output_stream = stderr;
-    }
-    if (keylog != nullptr) {
-        fclose(keylog);
-        keylog = nullptr;
-    }
+bool Log::keylogOpen(){
+    return keyoutput.is_open();
 }

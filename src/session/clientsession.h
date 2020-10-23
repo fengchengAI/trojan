@@ -30,14 +30,14 @@ private:
         REQUEST,
         CONNECT,
         FORWARD,
-        UDP_FORWARD,
         INVALID,
         DESTROY
     } status;
-    bool is_udp{};
-    bool first_packet_recv;
+
     boost::asio::ip::tcp::socket in_socket;
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket>out_socket;
+    // 这是从远程服务器读取到的数据，会被发送给本地浏览器。
+
     void destroy();
     void in_async_read();
     void in_async_write(const std::string &data);
@@ -47,14 +47,12 @@ private:
     void out_async_write(const std::string &data);
     void out_recv(const std::string &data);
     void out_sent();
-    void udp_async_read();
-    void udp_async_write(const std::string &data, const boost::asio::ip::udp::endpoint &endpoint);
-    void udp_recv(const std::string &data, const boost::asio::ip::udp::endpoint &endpoint);
-    void udp_sent();
+    std::string honst;
+
 public:
     ClientSession(const Config &config, boost::asio::io_context &io_context, boost::asio::ssl::context &ssl_context);
     boost::asio::ip::tcp::socket& accept_socket() override;
-    void start() override;
+    void start(const std::string &) override;
 };
 
 #endif // _CLIENTSESSION_H_

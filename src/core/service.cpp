@@ -20,22 +20,15 @@
 #include "service.h"
 #include <cstring>
 #include <cerrno>
+#include <iostream>
+#include <thread>
 #include <stdexcept>
-#include <fstream>
-#ifdef _WIN32
-#include <wincrypt.h>
-#include <tchar.h>
-#endif // _WIN32
-#ifdef __APPLE__
-#include <Security/Security.h>
-#endif // __APPLE__
-#include <openssl/opensslv.h>
 #include "session/serversession.h"
 #include "session/clientsession.h"
-#include "session/forwardsession.h"
-#include "session/natsession.h"
 #include "ssl/ssldefaults.h"
 #include "ssl/sslsession.h"
+#include "icmp/ping.hpp"
+#include "icmp/time_data.hpp"
 using namespace std;
 using namespace boost::asio::ip;
 using namespace boost::asio::ssl;
@@ -44,17 +37,53 @@ using namespace boost::asio::ssl;
 typedef boost::asio::detail::socket_option::boolean<SOL_SOCKET, SO_REUSEPORT> reuse_port;
 #endif // ENABLE_REUSE_PORT
 
-Service::Service(Config &config, bool test) :
+int time_data::TIME_OUT = 400;  //如果超时，time_data中记录为time_data::time_out
+int time_data::MAX_NUM = 3;  // 选择ping前time_data::max_nums的域名
+int pinger::sent_num = 0;
+int pinger::receive_num = 0;
+bool pinger::flag_sent = true;
+int pinger::num = 35;
+int pinger::TIME_OUT_WAIT = 5;
+int pinger::SENT_RATE = 10;
+int pinger::CHECK_RATE = 1;
+time_data* pinger::td (nullptr);
+
+
+void Service::pre_static_data(){
+    time_data::TIME_OUT = config.icmp.TIME_OUT;
+    time_data::MAX_NUM =  config.icmp.MAX_NUM;
+    pinger::num =  config.icmp.multi_web.size();
+    std::cout<<config.icmp.multi_web.size()<<std::endl;
+    pinger::TIME_OUT_WAIT =  config.icmp.TIME_OUT_WAIT;
+    pinger::SENT_RATE = config.icmp.SENT_RATE;
+    pinger::CHECK_RATE = config.icmp.CHECK_RATE;
+}
+
+Service::Service(Config &config, bool test):
+    //这里只要是处理ssl配置
     config(config),
     socket_acceptor(io_context),
     ssl_context(context::sslv23),
-    auth(nullptr),
-    udp_socket(io_context) {
-#ifndef ENABLE_NAT
-    if (config.run_type == Config::NAT) {
-        throw runtime_error("NAT is not supported");
-    }
-#endif // ENABLE_NAT
+    timer_(io_context,std::chrono::seconds(10))
+    //timer_(io_context,std::chrono::seconds(5))
+    {
+
+        if (config.icmp.enable_mutil_host){
+            pre_static_data();
+            timer_.async_wait([this](boost::system::error_code){
+                        hand_flash();
+                    });
+                    //time_data glob;
+                    //glob.set_nums(config.multi_web.size());
+            td = new time_data();  
+            td->set_nums(config.icmp.multi_web.size());
+            pinger::td = td;
+        }else
+        {
+            timer_.cancel();
+        }
+        
+     
     if (!test) {
         tcp::resolver resolver(io_context);
         tcp::endpoint listen_endpoint = *resolver.resolve(config.local_addr, to_string(config.local_port)).begin();
@@ -70,12 +99,11 @@ Service::Service(Config &config, bool test) :
         }
 
         socket_acceptor.bind(listen_endpoint);
+        // client 127.0.0.1：1080
+        // service 0.0.0.0:443
+
         socket_acceptor.listen();
-        if (config.run_type == Config::FORWARD) {
-            auto udp_bind_endpoint = udp::endpoint(listen_endpoint.address(), listen_endpoint.port());
-            udp_socket.open(udp_bind_endpoint.protocol());
-            udp_socket.bind(udp_bind_endpoint);
-        }
+
     }
     Log::level = config.log_level;
     auto native_context = ssl_context.native_handle();
@@ -121,13 +149,7 @@ Service::Service(Config &config, bool test) :
         } else {
             ssl_context.use_tmp_dh_file(config.ssl.dhparam);
         }
-        if (config.mysql.enabled) {
-#ifdef ENABLE_MYSQL
-            auth = new Authenticator(config);
-#else // ENABLE_MYSQL
-            Log::log_with_date_time("MySQL is not supported", Log::WARN);
-#endif // ENABLE_MYSQL
-        }
+
     } else {
         if (config.ssl.sni.empty()) {
             config.ssl.sni = config.remote_addr;
@@ -136,72 +158,7 @@ Service::Service(Config &config, bool test) :
             ssl_context.set_verify_mode(verify_peer);
             if (config.ssl.cert.empty()) {
                 ssl_context.set_default_verify_paths();
-#ifdef _WIN32
-                HCERTSTORE h_store = CertOpenSystemStore(0, _T("ROOT"));
-                if (h_store) {
-                    X509_STORE *store = SSL_CTX_get_cert_store(native_context);
-                    PCCERT_CONTEXT p_context = NULL;
-                    while ((p_context = CertEnumCertificatesInStore(h_store, p_context))) {
-                        const unsigned char *encoded_cert = p_context->pbCertEncoded;
-                        X509 *x509 = d2i_X509(NULL, &encoded_cert, p_context->cbCertEncoded);
-                        if (x509) {
-                            X509_STORE_add_cert(store, x509);
-                            X509_free(x509);
-                        }
-                    }
-                    CertCloseStore(h_store, 0);
-                }
-#endif // _WIN32
-#ifdef __APPLE__
-                SecKeychainSearchRef pSecKeychainSearch = NULL;
-                SecKeychainRef pSecKeychain;
-                OSStatus status = noErr;
-                X509 *cert = NULL;
 
-                // Leopard and above store location
-                status = SecKeychainOpen ("/System/Library/Keychains/SystemRootCertificates.keychain", &pSecKeychain);
-                if (status == noErr) {
-                    X509_STORE *store = SSL_CTX_get_cert_store(native_context);
-                    status = SecKeychainSearchCreateFromAttributes (pSecKeychain, kSecCertificateItemClass, NULL, &pSecKeychainSearch);
-                     for (;;) {
-                        SecKeychainItemRef pSecKeychainItem = nil;
-
-                        status = SecKeychainSearchCopyNext (pSecKeychainSearch, &pSecKeychainItem);
-                        if (status == errSecItemNotFound) {
-                            break;
-                        }
-
-                        if (status == noErr) {
-                            void *_pCertData;
-                            UInt32 _pCertLength;
-                            status = SecKeychainItemCopyAttributesAndData (pSecKeychainItem, NULL, NULL, NULL, &_pCertLength, &_pCertData);
-
-                            if (status == noErr && _pCertData != NULL) {
-                                unsigned char *ptr;
-
-                                ptr = (unsigned char *)_pCertData;       /*required because d2i_X509 is modifying pointer */
-                                cert = d2i_X509 (NULL, (const unsigned char **) &ptr, _pCertLength);
-                                if (cert == NULL) {
-                                    continue;
-                                }
-
-                                if (!X509_STORE_add_cert (store, cert)) {
-                                    X509_free (cert);
-                                    continue;
-                                }
-                                X509_free (cert);
-
-                                status = SecKeychainItemFreeAttributesAndData (NULL, _pCertData);
-                            }
-                        }
-                        if (pSecKeychainItem != NULL) {
-                            CFRelease (pSecKeychainItem);
-                        }
-                    }
-                    CFRelease (pSecKeychainSearch);
-                    CFRelease (pSecKeychain);
-                }
-#endif // __APPLE__
             } else {
                 ssl_context.load_verify_file(config.ssl.cert);
             }
@@ -263,11 +220,11 @@ Service::Service(Config &config, bool test) :
 #endif // TCP_FASTOPEN_CONNECT
         }
     }
-    if (Log::keylog) {
+    if (Log::keylogOpen()) {
 #ifdef ENABLE_SSL_KEYLOG
         SSL_CTX_set_keylog_callback(native_context, [](const SSL*, const char *line) {
-            fprintf(Log::keylog, "%s\n", line);
-            fflush(Log::keylog);
+            std::cout<<"***"<<std::endl;
+            Log::keylog(string(line));
         });
 #else // ENABLE_SSL_KEYLOG
         Log::log_with_date_time("SSL KeyLog is not supported", Log::WARN);
@@ -275,48 +232,82 @@ Service::Service(Config &config, bool test) :
     }
 }
 
-void Service::run() {
-    async_accept();
-    if (config.run_type == Config::FORWARD) {
-        udp_async_read();
+void Service::hand_flash(){
+    //std::cout<<"Service::hand_flash()"<<std::endl;
+    std::string tmp = td->get_best();
+
+    if(!tmp.empty()){
+        if(!td->is_better(last)){
+            last = tmp;
+        }
     }
+    timer_.expires_after(std::chrono::seconds(10));
+    timer_.async_wait([this](boost::system::error_code){
+        hand_flash();
+    });
+}
+
+
+void  Service::start_icmp(std::vector<std::shared_ptr<pinger>> &services, boost::asio::io_context &io_context_){
+    int identifier_num = 0;
+    for (std::string str : config.icmp.multi_web) {
+        std::shared_ptr <pinger> service = std::make_shared<pinger>(io_context_, str, identifier_num++);
+        services.push_back(service);
+    }
+    io_context_.run();
+}
+void Service::run() {
+
+    last =  config.remote_addr;
+    if (config.icmp.enable_mutil_host){
+
+        std::vector <std::shared_ptr<pinger>> services;
+        boost::asio::io_context io_context_local;
+
+        t = std::thread([&services,this,&io_context_local](){
+            start_icmp(services,io_context_local);
+        });
+    }
+
+    async_accept();
+
     tcp::endpoint local_endpoint = socket_acceptor.local_endpoint();
     string rt;
     if (config.run_type == Config::SERVER) {
         rt = "server";
-    } else if (config.run_type == Config::FORWARD) {
-        rt = "forward";
-    } else if (config.run_type == Config::NAT) {
-        rt = "nat";
-    } else {
+    }
+    else {
         rt = "client";
     }
+
     Log::log_with_date_time(string("trojan service (") + rt + ") started at " + local_endpoint.address().to_string() + ':' + to_string(local_endpoint.port()), Log::WARN);
+
     io_context.run();
+    if (config.icmp.enable_mutil_host) t.join();
+
     Log::log_with_date_time("trojan service stopped", Log::WARN);
 }
 
 void Service::stop() {
     boost::system::error_code ec;
     socket_acceptor.cancel(ec);
-    if (udp_socket.is_open()) {
-        udp_socket.cancel(ec);
-        udp_socket.close(ec);
-    }
+    std::cout<<"exit0"<<std::endl;
     io_context.stop();
+    exit(0);
 }
 
 void Service::async_accept() {
+
     shared_ptr<Session>session(nullptr);
     if (config.run_type == Config::SERVER) {
-        session = make_shared<ServerSession>(config, io_context, ssl_context, auth, plain_http_response);
-    } else if (config.run_type == Config::FORWARD) {
-        session = make_shared<ForwardSession>(config, io_context, ssl_context);
-    } else if (config.run_type == Config::NAT) {
-        session = make_shared<NATSession>(config, io_context, ssl_context);
-    } else {
+        session = make_shared<ServerSession>(config, io_context, ssl_context, plain_http_response);
+    }
+    else {
         session = make_shared<ClientSession>(config, io_context, ssl_context);
     }
+
+    // socket_acceptor 绑定监听的是config中的local_addr和local_port
+    // client为127.0.0.1：port， service为0.0.0.0：43
     socket_acceptor.async_accept(session->accept_socket(), [this, session](const boost::system::error_code error) {
         if (error == boost::asio::error::operation_aborted) {
             // got cancel signal, stop calling myself
@@ -325,53 +316,22 @@ void Service::async_accept() {
         if (!error) {
             boost::system::error_code ec;
             auto endpoint = session->accept_socket().remote_endpoint(ec);
+            // client 时
+            // endpoint是系统（浏览器）发送的请求，当有一个本地浏览器请求时，会进入该async_accept回调函数中
+            // endpoint的值为127.0.0.1：[PORT]
+            // 每个端口的请求都会调用一个session
+            
             if (!ec) {
-                Log::log_with_endpoint(endpoint, "incoming connection");
-                session->start();
+
+                Log::log_with_endpoint(endpoint, "incoming connection",Log::ALL);
+                session->start(last);
+                std::cout<<"                       *"<<last<<std::endl;
             }
         }
         async_accept();
     });
 }
 
-void Service::udp_async_read() {
-    udp_socket.async_receive_from(boost::asio::buffer(udp_read_buf, MAX_LENGTH), udp_recv_endpoint, [this](const boost::system::error_code error, size_t length) {
-        if (error == boost::asio::error::operation_aborted) {
-            // got cancel signal, stop calling myself
-            return;
-        }
-        if (error) {
-            stop();
-            throw runtime_error(error.message());
-        }
-        string data((const char *)udp_read_buf, length);
-        for (auto it = udp_sessions.begin(); it != udp_sessions.end();) {
-            auto next = ++it;
-            --it;
-            if (it->expired()) {
-                udp_sessions.erase(it);
-            } else if (it->lock()->process(udp_recv_endpoint, data)) {
-                udp_async_read();
-                return;
-            }
-            it = next;
-        }
-        Log::log_with_endpoint(tcp::endpoint(udp_recv_endpoint.address(), udp_recv_endpoint.port()), "new UDP session");
-        auto session = make_shared<UDPForwardSession>(config, io_context, ssl_context, udp_recv_endpoint, [this](const udp::endpoint &endpoint, const string &data) {
-            boost::system::error_code ec;
-            udp_socket.send_to(boost::asio::buffer(data), endpoint, 0, ec);
-            if (ec == boost::asio::error::no_permission) {
-                Log::log_with_endpoint(tcp::endpoint(endpoint.address(), endpoint.port()), "dropped a UDP packet due to firewall policy or rate limit");
-            } else if (ec) {
-                throw runtime_error(ec.message());
-            }
-        });
-        udp_sessions.emplace_back(session);
-        session->start();
-        session->process(udp_recv_endpoint, data);
-        udp_async_read();
-    });
-}
 
 boost::asio::io_context &Service::service() {
     return io_context;
@@ -388,12 +348,5 @@ void Service::reload_cert() {
         Log::log_with_date_time("certificate and private key reloaded", Log::WARN);
     } else {
         Log::log_with_date_time("cannot reload certificate and private key: wrong run_type", Log::ERROR);
-    }
-}
-
-Service::~Service() {
-    if (auth) {
-        delete auth;
-        auth = nullptr;
     }
 }

@@ -22,6 +22,8 @@
 
 #include <cstdint>
 #include <map>
+#include <vector>
+#include <string>
 #include <boost/property_tree/ptree.hpp>
 #include "log.h"
 
@@ -29,18 +31,13 @@ class Config {
 public:
     enum RunType {
         SERVER,
-        CLIENT,
-        FORWARD,
-        NAT
+        CLIENT
     } run_type;
     std::string local_addr;
     uint16_t local_port;
     std::string remote_addr;
     uint16_t remote_port;
-    std::string target_addr;
-    uint16_t target_port;
     std::map<std::string, std::string> password;
-    int udp_timeout;
     Log::Level log_level;
     class SSLConfig {
     public:
@@ -71,22 +68,24 @@ public:
         bool fast_open;
         int fast_open_qlen;
     } tcp;
-    class MySQLConfig {
+
+    class ICMPConfig {
     public:
-        bool enabled;
-        std::string server_addr;
-        uint16_t server_port;
-        std::string database;
-        std::string username;
-        std::string password;
-        std::string key;
-        std::string cert;
-        std::string ca;
-    } mysql;
+        bool enable_mutil_host;
+        int TIME_OUT;
+        int MAX_NUM;
+        int TIME_OUT_WAIT;
+        int SENT_RATE;
+        int CHECK_RATE;
+        std::vector<std::string> multi_web;
+
+    } icmp;
+
     void load(const std::string &filename);
     void populate(const std::string &JSON);
     bool sip003();
     static std::string SHA224(const std::string &message);
+
 private:
     void populate(const boost::property_tree::ptree &tree);
 };
