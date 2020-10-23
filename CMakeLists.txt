@@ -8,24 +8,18 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
 #设置这里只是为了检查nlohmann_json，因为本人是用vcpkg安装的，事实上可以直接源码安装。
-set(TOOLCHAIN_PATH /home/feng/Applications/vcpkg-master/scripts/buildsystems/vcpkg.cmake)
 
-add_definitions(-Wall -Wextra)
-add_executable(trojan
-    src/core/config.cpp
-    src/core/log.cpp
-    src/core/service.cpp
-    src/core/version.cpp
-    src/main.cpp
-    src/proto/socks5address.cpp
-    src/proto/trojanrequest.cpp
-    src/session/clientsession.cpp
-    src/session/serversession.cpp
-    src/session/session.cpp
-    src/ssl/ssldefaults.cpp
-    src/ssl/sslsession.cpp src/icmp/icmp.cpp src/icmp/ipv4.cpp src/icmp/ping.cpp src/icmp/time_data.cpp)
+
+set(SOURCE_FILES     src/main.cpp)
+
+AUX_SOURCE_DIRECTORY(src/core SOURCE_FILES)
+AUX_SOURCE_DIRECTORY(src/proto SOURCE_FILES)
+AUX_SOURCE_DIRECTORY(src/session SOURCE_FILES)
+AUX_SOURCE_DIRECTORY(src/ssl SOURCE_FILES)
+AUX_SOURCE_DIRECTORY(src/icmp SOURCE_FILES)
+
+ADD_EXECUTABLE(trojan ${SOURCE_FILES})
 include_directories(src)
-
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -35,8 +29,6 @@ find_package(Boost 1.66.0 REQUIRED COMPONENTS system program_options)
 include_directories(${Boost_INCLUDE_DIR})
 target_link_libraries(trojan ${Boost_LIBRARIES})
 
-find_package(nlohmann_json CONFIG REQUIRED)
-target_link_libraries(trojan nlohmann_json nlohmann_json::nlohmann_json)
 
 set(ENABLE_LOG ON)
 if (ENABLE_LOG)

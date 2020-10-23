@@ -53,7 +53,6 @@ void Service::pre_static_data(){
     time_data::TIME_OUT = config.icmp.TIME_OUT;
     time_data::MAX_NUM =  config.icmp.MAX_NUM;
     pinger::num =  config.icmp.multi_web.size();
-    std::cout<<config.icmp.multi_web.size()<<std::endl;
     pinger::TIME_OUT_WAIT =  config.icmp.TIME_OUT_WAIT;
     pinger::SENT_RATE = config.icmp.SENT_RATE;
     pinger::CHECK_RATE = config.icmp.CHECK_RATE;
@@ -65,7 +64,6 @@ Service::Service(Config &config, bool test):
     socket_acceptor(io_context),
     ssl_context(context::sslv23),
     timer_(io_context,std::chrono::seconds(10))
-    //timer_(io_context,std::chrono::seconds(5))
     {
 
         if (config.icmp.enable_mutil_host){
@@ -73,11 +71,10 @@ Service::Service(Config &config, bool test):
             timer_.async_wait([this](boost::system::error_code){
                         hand_flash();
                     });
-                    //time_data glob;
-                    //glob.set_nums(config.multi_web.size());
-            td = new time_data();  
-            td->set_nums(config.icmp.multi_web.size());
-            pinger::td = td;
+
+            td_ptr = new time_data();
+            td_ptr->set_nums(config.icmp.multi_web.size());
+            pinger::td = td_ptr;
         }else
         {
             timer_.cancel();
@@ -233,11 +230,10 @@ Service::Service(Config &config, bool test):
 }
 
 void Service::hand_flash(){
-    //std::cout<<"Service::hand_flash()"<<std::endl;
-    std::string tmp = td->get_best();
+    std::string tmp = td_ptr->get_best();
 
     if(!tmp.empty()){
-        if(!td->is_better(last)){
+        if(!td_ptr->is_better(last)){
             last = tmp;
         }
     }
@@ -248,24 +244,21 @@ void Service::hand_flash(){
 }
 
 
-void  Service::start_icmp(std::vector<std::shared_ptr<pinger>> &services, boost::asio::io_context &io_context_){
+void  Service::start_icmp(){
+
     int identifier_num = 0;
-    for (std::string str : config.icmp.multi_web) {
-        std::shared_ptr <pinger> service = std::make_shared<pinger>(io_context_, str, identifier_num++);
+    for (const std::string &str : config.icmp.multi_web) {
+        std::shared_ptr <pinger> service = std::make_shared<pinger>(io_context, str, identifier_num++);
         services.push_back(service);
     }
-    io_context_.run();
 }
 void Service::run() {
 
     last =  config.remote_addr;
     if (config.icmp.enable_mutil_host){
 
-        std::vector <std::shared_ptr<pinger>> services;
-        boost::asio::io_context io_context_local;
-
-        t = std::thread([&services,this,&io_context_local](){
-            start_icmp(services,io_context_local);
+        t = std::thread([this](){
+            start_icmp();
         });
     }
 
@@ -349,4 +342,8 @@ void Service::reload_cert() {
     } else {
         Log::log_with_date_time("cannot reload certificate and private key: wrong run_type", Log::ERROR);
     }
+}
+Service::~Service(){  //TODO:  Service Maybe can't ~
+    delete td_ptr;
+    td_ptr = nullptr;
 }

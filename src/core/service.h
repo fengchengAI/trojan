@@ -41,18 +41,21 @@ private:
     boost::asio::steady_timer timer_;
     std::string last;
     std::thread t;
-    time_data *td;
+    time_data *td_ptr;
 
     void async_accept();
 public:
     void pre_static_data();
     void hand_flash();
-    void  start_icmp(std::vector<std::shared_ptr<pinger>> &, boost::asio::io_context&);
+    void  start_icmp();
+    std::vector<std::shared_ptr<pinger>> services;
+
     explicit Service(Config &config, bool test = false);
     void run();
     void stop();
     boost::asio::io_context &service();
     void reload_cert();
+    ~Service();
 };
 
 #endif // _SERVICE_H_
