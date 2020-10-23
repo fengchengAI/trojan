@@ -1,28 +1,19 @@
-# trojan
+# trojan with icmp 
 
-[![Build Status](https://dev.azure.com/GreaterFire/Trojan-GFW/_apis/build/status/trojan-gfw.trojan?branchName=master)](https://dev.azure.com/GreaterFire/Trojan-GFW/_build/latest?definitionId=5&branchName=master)
-
-An unidentifiable mechanism that helps you bypass GFW.
-
-Trojan features multiple protocols over `TLS` to avoid both active/passive detections and ISP `QoS` limitations.
-
-Trojan is not a fixed program or protocol. It's an idea, an idea that imitating the most common service, to an extent that it behaves identically, could help you get across the Great FireWall permanently, without being identified ever. We are the GreatER Fire; we ship Trojan Horses.
+## fork from [trojan](https://github.com/trojan-gfw/trojan)
 
 ## Documentations
 
 An online documentation can be found [here](https://trojan-gfw.github.io/trojan/).  
 Installation guide on various platforms can be found in the [wiki](https://github.com/trojan-gfw/trojan/wiki/Binary-&-Package-Distributions).
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Dependencies
 
 - [CMake](https://cmake.org/) >= 3.7.2
 - [Boost](http://www.boost.org/) >= 1.66.0
 - [OpenSSL](https://www.openssl.org/) >= 1.1.0
-- [libmysqlclient](https://dev.mysql.com/downloads/connector/c/)
+
 
 
 
@@ -46,7 +37,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 代码改动
 
-在本项目中主要做的工作就是简化了项目，使得项目可以以最简单的方式运行client和service服务。由于目前大多数网页并不支持UDP协议，所以删去了所有有关UDP的代码，并为了简化验证阶段，删去了mysql服务。本项目核心为session，即client和service。实际上forward，client，service都很相似。且由于本人并不熟悉nat，并没有该需求，所以不做解释。实际上forward是类似于client的，且比client简单，理解好client就可以更好理解service和forward。
+在本项目中主要做的工作就是简化了项目，并加入了icmp服务，使得程序在多个节点的客户端上可以每隔一段时间自动选择延迟最低的节点。项目可以以最简单的方式运行client和service服务。由于目前大多数网页并不支持UDP协议，所以删去了所有有关UDP的代码，并为了简化验证阶段，删去了mysql服务。本项目核心为session，即client和service。实际上forward，client，service都很相似。且由于本人并不熟悉nat，并没有该需求，所以不做解释。实际上forward是类似于client的，且比client简单，理解好client就可以更好理解service和forward。
 
 config中，主要将写log改为ofsream，并加入了`ENABLE_LOG`以开启log功能，
 
