@@ -7,8 +7,6 @@ endif()
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
-#设置这里只是为了检查nlohmann_json，因为本人是用vcpkg安装的，事实上可以直接源码安装。
-
 
 set(SOURCE_FILES     src/main.cpp)
 
@@ -33,7 +31,7 @@ target_link_libraries(trojan ${Boost_LIBRARIES})
 set(ENABLE_LOG ON)
 if (ENABLE_LOG)
     add_definitions(-DENABLE_LOG)
-    set(DEFAULT_LOG_PATH ${PROJECT_SOURCE_DIR}/log/trojan.log CACHE STRING "Default log path")
+    set(DEFAULT_LOG_PATH "${PROJECT_SOURCE_DIR}/log/trojan.log" CACHE STRING "Default log path")
     message(${DEFAULT_LOG_PATH})
     add_definitions(-DDEFAULT_LOG_PATH="${DEFAULT_LOG_PATH}")
 endif ()
@@ -62,10 +60,6 @@ if(FORCE_TCP_FASTOPEN)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
-    option(ENABLE_NAT "Build with NAT support" ON)
-    if(ENABLE_NAT)
-        add_definitions(-DENABLE_NAT)
-    endif()
 
     option(ENABLE_REUSE_PORT "Build with SO_REUSEPORT support" ON)
     if(ENABLE_REUSE_PORT)

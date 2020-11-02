@@ -37,26 +37,8 @@ using namespace boost::asio::ssl;
 typedef boost::asio::detail::socket_option::boolean<SOL_SOCKET, SO_REUSEPORT> reuse_port;
 #endif // ENABLE_REUSE_PORT
 
-int time_data::TIME_OUT = 400;  //如果超时，time_data中记录为time_data::time_out
-int time_data::MAX_NUM = 3;  // 选择ping前time_data::max_nums的域名
-int pinger::sent_num = 0;
-int pinger::receive_num = 0;
-bool pinger::flag_sent = true;
-int pinger::num = 35;
-int pinger::TIME_OUT_WAIT = 5;
-int pinger::SENT_RATE = 10;
-int pinger::CHECK_RATE = 1;
-time_data* pinger::td (nullptr);
 
 
-void Service::pre_static_data(){
-    time_data::TIME_OUT = config.icmp.TIME_OUT;
-    time_data::MAX_NUM =  config.icmp.MAX_NUM;
-    pinger::num =  config.icmp.multi_web.size();
-    pinger::TIME_OUT_WAIT =  config.icmp.TIME_OUT_WAIT;
-    pinger::SENT_RATE = config.icmp.SENT_RATE;
-    pinger::CHECK_RATE = config.icmp.CHECK_RATE;
-}
 
 Service::Service(Config &config, bool test):
     //这里只要是处理ssl配置
@@ -67,14 +49,15 @@ Service::Service(Config &config, bool test):
     {
 
         if (config.icmp.enable_mutil_host){
-            pre_static_data();
+            //pre_static_data();
+
+            td_ptr = new time_data();
+            td_ptr->init(config.icmp.multi_web.size());
+            td_ptr->good_num = config.icmp.good_num;
             timer_.async_wait([this](boost::system::error_code){
                         hand_flash();
                     });
 
-            td_ptr = new time_data();
-            td_ptr->set_nums(config.icmp.multi_web.size());
-            pinger::td = td_ptr;
         }else
         {
             timer_.cancel();
@@ -246,15 +229,13 @@ void Service::hand_flash(){
 
 void  Service::start_icmp(){
 
-    int identifier_num = 0;
-    for (const std::string &str : config.icmp.multi_web) {
-        std::shared_ptr <pinger> service = std::make_shared<pinger>(io_context, str, identifier_num++);
-        services.push_back(service);
-    }
+    ping = std::make_shared<pinger>(io_context, config, td_ptr);
+
 }
 void Service::run() {
 
     last =  config.remote_addr;
+
     if (config.icmp.enable_mutil_host){
 
         t = std::thread([this](){
@@ -315,10 +296,9 @@ void Service::async_accept() {
             // 每个端口的请求都会调用一个session
             
             if (!ec) {
-
                 Log::log_with_endpoint(endpoint, "incoming connection",Log::ALL);
                 session->start(last);
-                std::cout<<"                       *"<<last<<std::endl;
+                Log::log_with_date_time("now ip is "+last, Log::INFO);
             }
         }
         async_accept();

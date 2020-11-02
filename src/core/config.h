@@ -72,11 +72,9 @@ public:
     class ICMPConfig {
     public:
         bool enable_mutil_host;
-        int TIME_OUT;
-        int MAX_NUM;
-        int TIME_OUT_WAIT;
-        int SENT_RATE;
-        int CHECK_RATE;
+        int time_out;
+        int good_num;
+        int sent_time;
         std::vector<std::string> multi_web;
 
     } icmp;

@@ -75,7 +75,7 @@ set(DEFAULT_CONFIG /usr/local/etc/trojan/buy.json CACHE STRING "Default config p
 | SERVICE状态 | <span style="display:inline-block;width:550px">备注</span>   |
 | ----------- | ------------------------------------------------------------ |
 | HANDSHAKE   | 先进行CLIENT握手，然后读取client数据，判断data数据是否包含trojan头信息，并判断密码的合法性，然后解析。如果为真，则表示是trojan请求，将troajn中的真实请求地址(去掉trojan头信息作为解析地址，即真实请求地址)赋值给out_write_buf; 如果为假，则表示这是一个正常的请求，直接将读取到的数据data赋值给out_write_buf（不用去除trojan头）。进入FORWARD |
-| FORWARD     | 将解析的地址(eg: www.google.com:443)的数据发送给client，然后将从client读取的数据，即(out_write_buf),发送给真实请求地址(eg: www.google.com:443) |
+| FORWARD     | 将解析的地址 [eg: www.google.com:443] 的数据发送给client，然后将从client读取的数据，即(out_write_buf),发送给真实请求地址 [eg: www.google.com:443] |
 
 
 

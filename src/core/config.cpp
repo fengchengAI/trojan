@@ -98,11 +98,9 @@ void Config::populate(const ptree &tree) {
     tcp.fast_open_qlen = tree.get("tcp.fast_open_qlen", 20);
 
     icmp.enable_mutil_host = tree.get("icmp.enable_mutil_host",false);
-    icmp.MAX_NUM = tree.get("icmp.MAX_NUM",3);
-    icmp.TIME_OUT_WAIT = tree.get("icmp.TIME_OUT_WAIT",5);
-    icmp.SENT_RATE = tree.get("icmp.SENT_RATE",10);
-    icmp.CHECK_RATE = tree.get("icmp.CHECK_RATE",1);
-    icmp.TIME_OUT = tree.get("icmp.TIME_OUT",400);
+    icmp.good_num = tree.get("icmp.MAX_NUM",3);
+    icmp.sent_time = tree.get("icmp.SENT_RATE",10);
+    icmp.time_out = tree.get("icmp.TIME_OUT",400);
 
     //这里是比作者多的，假设会有多个节点信息，就写在这里
     if (tree.get_child_optional("icmp.multi_web")) {

@@ -4,6 +4,8 @@
 
 #ifndef TEST_TIME_DATA_HPP
 #define TEST_TIME_DATA_HPP
+
+
 #include <string>
 #include <vector>
 #include <array>
@@ -12,12 +14,12 @@ private:
     std::vector<std::pair<std::string, long> > data; // 记录所有节点的延迟信息，string对应域名，long对应ping值
     std::string best_service;  // 保存最好的服务器名字，会在getMax被赋值
 public:
-    void set_nums(int);
+    void init(int);
+    int good_num;
+
     time_data() = default;// 构造函数，对应
 
-    static int TIME_OUT;
-    static int MAX_NUM;
-    void set(int,std::pair<std::string, long>);  // 提供给pinger修改data的接口
+    void set(int, std::string, long);  // 提供给pinger修改data的接口
     std::string get_best();
     void sort();
     bool is_better(std::string str);  

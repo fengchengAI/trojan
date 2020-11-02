@@ -41,23 +41,27 @@ ofstream Log::keyoutput;
 
 void Log::log(const string &message, Level level) {
     #ifdef ENABLE_LOG
-        if (level >= Log::level) {
-            cout<<message<<endl;
-            if (output.is_open())
-                output<<message<<endl;
-            else cout<<"Open log file failed"<<endl;
-        }
+
+    if (level >= Log::level) {
+        cout<<message<<endl;
+        if (output.is_open())
+            output<<message<<endl;
+        else
+            cout<<"Open log file failed"<<endl;
+    }
     #endif
 }
 
 void Log::keylog(const string &message) {
-#ifdef ENABLE_SSL_KEYLOG
+
+    #ifdef ENABLE_SSL_KEYLOG
+    cout<<"--------------------"<<DEFAULT_LOG_PATH<<endl;
 
     if (keyoutput.is_open())
             keyoutput<<message<<endl;
-        else keyoutput<<"Open log file failed"<<endl;
+    else keyoutput<<"Open log file failed"<<endl;
 
-#endif
+    #endif
 }
 
 void Log::log_with_date_time(const string &message, Level level) {

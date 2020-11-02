@@ -41,6 +41,8 @@ private:
     boost::asio::steady_timer timer_;
     std::string last;
     std::thread t;
+    std::shared_ptr <pinger> ping;
+
     time_data *td_ptr;
 
     void async_accept();
