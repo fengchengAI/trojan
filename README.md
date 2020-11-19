@@ -131,14 +131,12 @@ set(DEFAULT_CONFIG /usr/local/etc/trojan/buy.json CACHE STRING "Default config p
         ["fm1-1.sstr-api.xyz","fm1-2.sstr-api.xyz",],
         "TIME_OUT":400,
         "MAX_NUM":3,
-        "TIME_OUT_WAIT":5,
         "SENT_RATE":10,
-        "CHECK_RATE":1
         }
 
 }
 ```
 这个配置文件主要加入了icmp的配置文件，
-TIME_OUT为当ping超时时记录的值，MAX_NUM是前MAX_NUM个节点都是好节点，TIME_OUT_WAIT表示等待TIME_OUT_WAIT秒无icmp应答即表示超时，SENT_RATE表示成功接受相应或者接受超时后隔SENT_RATE秒后再ping一次，CHECK_RATE表示每个节点发送icmp请求的时候都必须是一个批次的，否则就没隔CHECK_RATE检查下条件。
+TIME_OUT为当ping超时时记录的值，MAX_NUM是前MAX_NUM个节点都是好节点，SENT_RATE表示每隔SENT_RATE就會對所有節點進行一次ping然後更新排名數據
 
 本项目由于本人做了极大的精简，故也失去了兼容性，由于icmp的配置，本项目很适合在客户端使用。
