@@ -25,7 +25,6 @@
 #include <boost/program_options.hpp>
 #include <boost/version.hpp>
 #include <openssl/opensslv.h>
-#include <nlohmann/json.hpp>
 
 #include "core/service.h"
 #include "core/version.h"
@@ -33,7 +32,6 @@
 using namespace std;
 using namespace boost::asio;
 namespace po = boost::program_options;
-using json = nlohmann::json;
 
 
 #ifndef DEFAULT_CONFIG

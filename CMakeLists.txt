@@ -82,5 +82,5 @@ if(SYSTEMD_SERVICE STREQUAL AUTO)
 endif()
 
 
-set(DEFAULT_CONFIG /usr/local/etc/trojan/buy.json CACHE STRING "Default config path")
+set(DEFAULT_CONFIG ${PROJECT_SOURCE_DIR}/examples/buy.json CACHE STRING "Default config path")
 add_definitions(-DDEFAULT_CONFIG="${DEFAULT_CONFIG}")
