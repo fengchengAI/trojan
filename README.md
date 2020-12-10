@@ -57,17 +57,11 @@ main中本人加入了路径转化的代码
 
 且将in_async_write和out_async_write声明为char，这样在out_recv阶段，就不需要强制转换
 
-删去啦`first_packet_recv`的判断，因为该判断一直为真
+删去了`first_packet_recv`的判断，因为该判断一直为真
 
 最主要的是在destroy时，将socket的关闭改为异步延迟关闭
 
 
-
-使用前，需要修改CMakeList.txt中的
-
-```shell
-set(DEFAULT_CONFIG /usr/local/etc/trojan/buy.json CACHE STRING "Default config path")
-```
 
 
 
