@@ -44,177 +44,164 @@ Service::Service(Config &config, bool test):
     //这里只要是处理ssl配置
     config(config),
     socket_acceptor(io_context),
-    ssl_context(context::sslv23),
-    timer_(io_context,std::chrono::seconds(10))
+    ssl_context(context::sslv23)
     {
 
         if (config.icmp.enable_mutil_host){
-            //pre_static_data();
-
-            td_ptr = new time_data();
-            td_ptr->init(config.icmp.multi_web.size());
-            td_ptr->good_num = config.icmp.good_num;
-            timer_.async_wait([this](boost::system::error_code){
-                        hand_flash();
-                    });
-
-        }else
-        {
-            timer_.cancel();
+            td_ptr = new time_data(this, config.icmp.good_num, config.icmp.multi_web.size());
         }
-        
      
-    if (!test) {
-        tcp::resolver resolver(io_context);
-        tcp::endpoint listen_endpoint = *resolver.resolve(config.local_addr, to_string(config.local_port)).begin();
-        socket_acceptor.open(listen_endpoint.protocol());
-        socket_acceptor.set_option(tcp::acceptor::reuse_address(true));
+        if (!test) {
+            tcp::resolver resolver(io_context);
+            tcp::endpoint listen_endpoint = *resolver.resolve(config.local_addr, to_string(config.local_port)).begin();
+            socket_acceptor.open(listen_endpoint.protocol());
+            socket_acceptor.set_option(tcp::acceptor::reuse_address(true));
 
-        if (config.tcp.reuse_port) {
-#ifdef ENABLE_REUSE_PORT
-            socket_acceptor.set_option(reuse_port(true));
-#else  // ENABLE_REUSE_PORT
-            Log::log_with_date_time("SO_REUSEPORT is not supported", Log::WARN);
-#endif // ENABLE_REUSE_PORT
+            if (config.tcp.reuse_port) {
+    #ifdef ENABLE_REUSE_PORT
+                socket_acceptor.set_option(reuse_port(true));
+    #else  // ENABLE_REUSE_PORT
+                Log::log_with_date_time("SO_REUSEPORT is not supported", Log::WARN);
+    #endif // ENABLE_REUSE_PORT
+            }
+
+            socket_acceptor.bind(listen_endpoint);
+            // client 127.0.0.1：1080
+            // service 0.0.0.0:443
+
+            socket_acceptor.listen();
+
         }
-
-        socket_acceptor.bind(listen_endpoint);
-        // client 127.0.0.1：1080
-        // service 0.0.0.0:443
-
-        socket_acceptor.listen();
-
-    }
-    Log::level = config.log_level;
-    auto native_context = ssl_context.native_handle();
-    ssl_context.set_options(context::default_workarounds | context::no_sslv2 | context::no_sslv3 | context::single_dh_use);
-    if (!config.ssl.curves.empty()) {
-        SSL_CTX_set1_curves_list(native_context, config.ssl.curves.c_str());
-    }
-    if (config.run_type == Config::SERVER) {
-        ssl_context.use_certificate_chain_file(config.ssl.cert);
-        ssl_context.set_password_callback([this](size_t, context_base::password_purpose) {
-            return this->config.ssl.key_password;
-        });
-        ssl_context.use_private_key_file(config.ssl.key, context::pem);
-        if (config.ssl.prefer_server_cipher) {
-            SSL_CTX_set_options(native_context, SSL_OP_CIPHER_SERVER_PREFERENCE);
+        Log::level = config.log_level;
+        auto native_context = ssl_context.native_handle();
+        ssl_context.set_options(context::default_workarounds | context::no_sslv2 | context::no_sslv3 | context::single_dh_use);
+        if (!config.ssl.curves.empty()) {
+            SSL_CTX_set1_curves_list(native_context, config.ssl.curves.c_str());
         }
-        if (!config.ssl.alpn.empty()) {
-            SSL_CTX_set_alpn_select_cb(native_context, [](SSL*, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *config) -> int {
-                if (SSL_select_next_proto((unsigned char**)out, outlen, (unsigned char*)(((Config*)config)->ssl.alpn.c_str()), ((Config*)config)->ssl.alpn.length(), in, inlen) != OPENSSL_NPN_NEGOTIATED) {
-                    return SSL_TLSEXT_ERR_NOACK;
+        if (config.run_type == Config::SERVER) {
+            ssl_context.use_certificate_chain_file(config.ssl.cert);
+            ssl_context.set_password_callback([this](size_t, context_base::password_purpose) {
+                return this->config.ssl.key_password;
+            });
+            ssl_context.use_private_key_file(config.ssl.key, context::pem);
+            if (config.ssl.prefer_server_cipher) {
+                SSL_CTX_set_options(native_context, SSL_OP_CIPHER_SERVER_PREFERENCE);
+            }
+            if (!config.ssl.alpn.empty()) {
+                SSL_CTX_set_alpn_select_cb(native_context, [](SSL*, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *config) -> int {
+                    if (SSL_select_next_proto((unsigned char**)out, outlen, (unsigned char*)(((Config*)config)->ssl.alpn.c_str()), ((Config*)config)->ssl.alpn.length(), in, inlen) != OPENSSL_NPN_NEGOTIATED) {
+                        return SSL_TLSEXT_ERR_NOACK;
+                    }
+                    return SSL_TLSEXT_ERR_OK;
+                }, &config);
+            }
+            if (config.ssl.reuse_session) {
+                SSL_CTX_set_timeout(native_context, config.ssl.session_timeout);
+                if (!config.ssl.session_ticket) {
+                    SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
                 }
-                return SSL_TLSEXT_ERR_OK;
-            }, &config);
-        }
-        if (config.ssl.reuse_session) {
-            SSL_CTX_set_timeout(native_context, config.ssl.session_timeout);
-            if (!config.ssl.session_ticket) {
-                SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
-            }
-        } else {
-            SSL_CTX_set_session_cache_mode(native_context, SSL_SESS_CACHE_OFF);
-            SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
-        }
-        if (!config.ssl.plain_http_response.empty()) {
-            ifstream ifs(config.ssl.plain_http_response, ios::binary);
-            if (!ifs.is_open()) {
-                throw runtime_error(config.ssl.plain_http_response + ": " + strerror(errno));
-            }
-            plain_http_response = string(istreambuf_iterator<char>(ifs), istreambuf_iterator<char>());
-        }
-        if (config.ssl.dhparam.empty()) {
-            ssl_context.use_tmp_dh(boost::asio::const_buffer(SSLDefaults::g_dh2048_sz, SSLDefaults::g_dh2048_sz_size));
-        } else {
-            ssl_context.use_tmp_dh_file(config.ssl.dhparam);
-        }
-
-    } else {
-        if (config.ssl.sni.empty()) {
-            config.ssl.sni = config.remote_addr;
-        }
-        if (config.ssl.verify) {
-            ssl_context.set_verify_mode(verify_peer);
-            if (config.ssl.cert.empty()) {
-                ssl_context.set_default_verify_paths();
-
             } else {
-                ssl_context.load_verify_file(config.ssl.cert);
-            }
-            if (config.ssl.verify_hostname) {
-#if BOOST_VERSION >= 107300
-                ssl_context.set_verify_callback(host_name_verification(config.ssl.sni));
-#else
-                ssl_context.set_verify_callback(rfc2818_verification(config.ssl.sni));
-#endif
-            }
-            X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new();
-            X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
-            SSL_CTX_set1_param(native_context, param);
-            X509_VERIFY_PARAM_free(param);
-        } else {
-            ssl_context.set_verify_mode(verify_none);
-        }
-        if (!config.ssl.alpn.empty()) {
-            SSL_CTX_set_alpn_protos(native_context, (unsigned char*)(config.ssl.alpn.c_str()), config.ssl.alpn.length());
-        }
-        if (config.ssl.reuse_session) {
-            SSL_CTX_set_session_cache_mode(native_context, SSL_SESS_CACHE_CLIENT);
-            SSLSession::set_callback(native_context);
-            if (!config.ssl.session_ticket) {
+                SSL_CTX_set_session_cache_mode(native_context, SSL_SESS_CACHE_OFF);
                 SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
             }
+            if (!config.ssl.plain_http_response.empty()) {
+                ifstream ifs(config.ssl.plain_http_response, ios::binary);
+                if (!ifs.is_open()) {
+                    throw runtime_error(config.ssl.plain_http_response + ": " + strerror(errno));
+                }
+                plain_http_response = string(istreambuf_iterator<char>(ifs), istreambuf_iterator<char>());
+            }
+            if (config.ssl.dhparam.empty()) {
+                ssl_context.use_tmp_dh(boost::asio::const_buffer(SSLDefaults::g_dh2048_sz, SSLDefaults::g_dh2048_sz_size));
+            } else {
+                ssl_context.use_tmp_dh_file(config.ssl.dhparam);
+            }
+
         } else {
-            SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
-        }
-    }
-    if (!config.ssl.cipher.empty()) {
-        SSL_CTX_set_cipher_list(native_context, config.ssl.cipher.c_str());
-    }
-    if (!config.ssl.cipher_tls13.empty()) {
-#ifdef ENABLE_TLS13_CIPHERSUITES
-        SSL_CTX_set_ciphersuites(native_context, config.ssl.cipher_tls13.c_str());
-#else  // ENABLE_TLS13_CIPHERSUITES
-        Log::log_with_date_time("TLS1.3 ciphersuites are not supported", Log::WARN);
-#endif // ENABLE_TLS13_CIPHERSUITES
-    }
+            if (config.ssl.sni.empty()) {
+                config.ssl.sni = config.remote_addr;
+            }
+            if (config.ssl.verify) {
+                ssl_context.set_verify_mode(verify_peer);
+                if (config.ssl.cert.empty()) {
+                    ssl_context.set_default_verify_paths();
 
-    if (!test) {
-        if (config.tcp.no_delay) {
-            socket_acceptor.set_option(tcp::no_delay(true));
+                } else {
+                    ssl_context.load_verify_file(config.ssl.cert);
+                }
+                if (config.ssl.verify_hostname) {
+    #if BOOST_VERSION >= 107300
+                    ssl_context.set_verify_callback(host_name_verification(config.ssl.sni));
+    #else
+                    ssl_context.set_verify_callback(rfc2818_verification(config.ssl.sni));
+    #endif
+                }
+                X509_VERIFY_PARAM *param = X509_VERIFY_PARAM_new();
+                X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN);
+                SSL_CTX_set1_param(native_context, param);
+                X509_VERIFY_PARAM_free(param);
+            } else {
+                ssl_context.set_verify_mode(verify_none);
+            }
+            if (!config.ssl.alpn.empty()) {
+                SSL_CTX_set_alpn_protos(native_context, (unsigned char*)(config.ssl.alpn.c_str()), config.ssl.alpn.length());
+            }
+            if (config.ssl.reuse_session) {
+                SSL_CTX_set_session_cache_mode(native_context, SSL_SESS_CACHE_CLIENT);
+                SSLSession::set_callback(native_context);
+                if (!config.ssl.session_ticket) {
+                    SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
+                }
+            } else {
+                SSL_CTX_set_options(native_context, SSL_OP_NO_TICKET);
+            }
         }
-        if (config.tcp.keep_alive) {
-            socket_acceptor.set_option(boost::asio::socket_base::keep_alive(true));
+        if (!config.ssl.cipher.empty()) {
+            SSL_CTX_set_cipher_list(native_context, config.ssl.cipher.c_str());
         }
-        if (config.tcp.fast_open) {
-#ifdef TCP_FASTOPEN
-            using fastopen = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_FASTOPEN>;
-            boost::system::error_code ec;
-            socket_acceptor.set_option(fastopen(config.tcp.fast_open_qlen), ec);
-#else // TCP_FASTOPEN
-            Log::log_with_date_time("TCP_FASTOPEN is not supported", Log::WARN);
-#endif // TCP_FASTOPEN
-#ifndef TCP_FASTOPEN_CONNECT
-            Log::log_with_date_time("TCP_FASTOPEN_CONNECT is not supported", Log::WARN);
-#endif // TCP_FASTOPEN_CONNECT
+        if (!config.ssl.cipher_tls13.empty()) {
+    #ifdef ENABLE_TLS13_CIPHERSUITES
+            SSL_CTX_set_ciphersuites(native_context, config.ssl.cipher_tls13.c_str());
+    #else  // ENABLE_TLS13_CIPHERSUITES
+            Log::log_with_date_time("TLS1.3 ciphersuites are not supported", Log::WARN);
+    #endif // ENABLE_TLS13_CIPHERSUITES
         }
-    }
-    if (Log::keylogOpen()) {
-#ifdef ENABLE_SSL_KEYLOG
-        SSL_CTX_set_keylog_callback(native_context, [](const SSL*, const char *line) {
-            std::cout<<"***"<<std::endl;
-            Log::keylog(string(line));
-        });
-#else // ENABLE_SSL_KEYLOG
-        Log::log_with_date_time("SSL KeyLog is not supported", Log::WARN);
-#endif // ENABLE_SSL_KEYLOG
-    }
+
+        if (!test) {
+            if (config.tcp.no_delay) {
+                socket_acceptor.set_option(tcp::no_delay(true));
+            }
+            if (config.tcp.keep_alive) {
+                socket_acceptor.set_option(boost::asio::socket_base::keep_alive(true));
+            }
+            if (config.tcp.fast_open) {
+    #ifdef TCP_FASTOPEN
+                using fastopen = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_FASTOPEN>;
+                boost::system::error_code ec;
+                socket_acceptor.set_option(fastopen(config.tcp.fast_open_qlen), ec);
+    #else // TCP_FASTOPEN
+                Log::log_with_date_time("TCP_FASTOPEN is not supported", Log::WARN);
+    #endif // TCP_FASTOPEN
+    #ifndef TCP_FASTOPEN_CONNECT
+                Log::log_with_date_time("TCP_FASTOPEN_CONNECT is not supported", Log::WARN);
+    #endif // TCP_FASTOPEN_CONNECT
+            }
+        }
+        if (Log::keylogOpen()) {
+    #ifdef ENABLE_SSL_KEYLOG
+            SSL_CTX_set_keylog_callback(native_context, [](const SSL*, const char *line) {
+                std::cout<<"***"<<std::endl;
+                Log::keylog(string(line));
+            });
+    #else // ENABLE_SSL_KEYLOG
+            Log::log_with_date_time("SSL KeyLog is not supported", Log::WARN);
+    #endif // ENABLE_SSL_KEYLOG
+        }
 }
-
+/*
 void Service::hand_flash(){
     std::string tmp = td_ptr->get_best();
-
+    //std::cout<<"Service::hand_flash()      "<< tmp<<std::endl;
     if(!tmp.empty()){
         if(!td_ptr->is_better(last)){
             last = tmp;
@@ -225,16 +212,17 @@ void Service::hand_flash(){
         hand_flash();
     });
 }
+*/
 
-
-void  Service::start_icmp(){
+void Service::start_icmp(){
 
     ping = std::make_shared<pinger>(io_context, config, td_ptr);
+    ping->start();
 
 }
 void Service::run() {
 
-    last =  config.remote_addr;
+    last = config.remote_addr;
 
     if (config.icmp.enable_mutil_host){
 
@@ -326,4 +314,13 @@ void Service::reload_cert() {
 Service::~Service(){  //TODO:  Service Maybe can't ~
     delete td_ptr;
     td_ptr = nullptr;
+}
+
+void Service::update(std::string old) {
+    last = old;
+}
+
+
+std::string Service::get_web(){
+    return last;
 }

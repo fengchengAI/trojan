@@ -154,15 +154,7 @@ int main(int argc, const char *argv[]) {
         bool restart;
         Config config;
 
-        /*
-        std::ifstream i("/home/feng/Github/CLionProjects/Test_ICMP/gui-config.json");
-        json j;
-        i >> j;
 
-        for (auto site : j["configs"]){
-            config.multi_web.push_back(site["server"]);
-        }
-        */
         do {
             restart = false;
             if (config.sip003()) { //SIP003 是SS的一个配置或者协议

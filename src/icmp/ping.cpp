@@ -4,7 +4,7 @@
 
 #include <string>
 #include <chrono>
-
+#include <ctime>
 #include "icmp.hpp"
 #include "ipv4.hpp"
 #include "ping.hpp"
@@ -13,11 +13,7 @@ using namespace std;
 
 pinger::pinger(boost::asio::io_context& io_context, const Config &config_, time_data *tdp)
         : resolver_(io_context), socket_(io_context, boost::asio::ip::icmp::v4()),
-          timer_(io_context), sequence_number_(0), config(config_),tdp(tdp)
-{
-    start_send();
-    start_receive();
-}
+          timer_(io_context), sequence_number_(0), config(config_),tdp(tdp){}
 
 void pinger::start_send()
 {
@@ -28,28 +24,31 @@ void pinger::start_send()
     echo_request.code(0);
     echo_request.sequence_number(sequence_number_);
     int identifier = 0;
+    std::chrono::steady_clock::time_point temp;
     for (auto str : config.icmp.multi_web){
 
         destination_ = *resolver_.resolve(boost::asio::ip::icmp::v4(), str, "").cbegin();
         echo_request.identifier(identifier);
         echo_request.compute_checksum(body.c_str(), body.c_str()+body.size());
-
-        data[identifier].first = std::chrono::steady_clock::now();
-        data[identifier].second =std::chrono::steady_clock::now() + std::chrono::milliseconds(config.icmp.time_out);
+        temp = std::chrono::steady_clock::now();
+        data[identifier].first = temp;
+        data[identifier].second = temp + std::chrono::milliseconds(config.icmp.time_out);
 
         socket_.send_to(boost::asio::buffer(echo_request.data()+body), destination_);
         identifier++;
     }
     sequence_number_++;
 
-    timer_.expires_after(std::chrono::milliseconds (config.icmp.sent_time));
+    timer_.expires_after(std::chrono::seconds(config.icmp.sent_time));
+
     timer_.async_wait([this](boost::system::error_code){
-        set_data();
+
+        flush();
         start_send();
     });
 
 }
-void pinger::set_data(){
+void pinger::flush(){
     for(auto i : data){
         tdp->set(i.first, config.icmp.multi_web[i.first], std::chrono::duration_cast<chrono::milliseconds>(i.second.second-i.second.first).count());
     }
@@ -58,7 +57,7 @@ void pinger::set_data(){
 void pinger::start_receive()
 {
     socket_.async_receive(boost::asio::buffer(receive,1024),
-                          [this ](boost::system::error_code ec, std::size_t size){
+                          [this](boost::system::error_code ec, std::size_t size){
 
                               if (ec) std::cout<<ec.message()<<std::endl;
                               else handle_receive(size);
@@ -81,10 +80,11 @@ void pinger::handle_receive(std::size_t length)
     if (length>0 && icmp_hdr.type() == icmp_header::echo_reply &&
         data.count(icmp_hdr.identifier()) && icmp_hdr.sequence_number() ==sequence_number_-1 )
     {
-        data[icmp_hdr.identifier()].second =  std::chrono::steady_clock::now();
+        int web_id = icmp_hdr.identifier();
+        data.at(web_id).second =  std::chrono::steady_clock::now();
         // Print out some information about the reply packet.
-        std::chrono::steady_clock::duration elapsed = data[icmp_hdr.identifier()].second - data[icmp_hdr.identifier()].first;
 
+        //std::cout<< "data.at(web_id).second =  std::chrono::steady_clock::now();" <<std::endl;
         /*
         std::cout << length - ipv4_hdr.header_length()
 
@@ -97,5 +97,10 @@ void pinger::handle_receive(std::size_t length)
                   << std::endl;
         */
     }
+    start_receive();
+}
+
+void pinger::start() {
+    start_send();
     start_receive();
 }

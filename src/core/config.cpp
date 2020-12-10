@@ -99,7 +99,7 @@ void Config::populate(const ptree &tree) {
 
     icmp.enable_mutil_host = tree.get("icmp.enable_mutil_host",false);
     icmp.good_num = tree.get("icmp.MAX_NUM",3);
-    icmp.sent_time = tree.get("icmp.SENT_RATE",10);
+    icmp.sent_time = tree.get("icmp.SENT_RATE",5);
     icmp.time_out = tree.get("icmp.TIME_OUT",400);
 
     //这里是比作者多的，假设会有多个节点信息，就写在这里
@@ -108,6 +108,7 @@ void Config::populate(const ptree &tree) {
             icmp.multi_web.push_back(item.second.get_value<string>());
         }
     }
+    std::sort(icmp.multi_web.begin(),icmp.multi_web.end());
 }
 
 bool Config::sip003() {

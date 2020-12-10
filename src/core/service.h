@@ -38,19 +38,18 @@ private:
     boost::asio::ip::tcp::acceptor socket_acceptor;
     boost::asio::ssl::context ssl_context;
     std::string plain_http_response;
-    boost::asio::steady_timer timer_;
+    //boost::asio::steady_timer timer_;
     std::string last;
     std::thread t;
-    std::shared_ptr <pinger> ping;
+    std::shared_ptr<pinger> ping;
 
     time_data *td_ptr;
 
     void async_accept();
 public:
-    void pre_static_data();
-    void hand_flash();
-    void  start_icmp();
-    std::vector<std::shared_ptr<pinger>> services;
+    void update(std::string old);
+    std::string get_web();
+    void start_icmp();
 
     explicit Service(Config &config, bool test = false);
     void run();
